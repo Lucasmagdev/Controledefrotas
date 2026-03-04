@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { Trash2, Check } from 'lucide-react';
+import { Trash2, Check, PenTool, AlertCircle } from 'lucide-react';
 
 interface SignaturePadProps {
   value?: string;
@@ -17,6 +17,7 @@ export function SignaturePad({ value, onChange, label, required, error }: Signat
   const [isDrawing, setIsDrawing] = useState(false);
   const [isEmpty, setIsEmpty] = useState(true);
   const [hasDrawn, setHasDrawn] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
 
   // Inicializar canvas quando montar
   useEffect(() => {
@@ -32,7 +33,7 @@ export function SignaturePad({ value, onChange, label, required, error }: Signat
     
     // Definir cor e espessura da caneta
     ctx.strokeStyle = '#1f2937';
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 3;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
@@ -222,58 +223,108 @@ export function SignaturePad({ value, onChange, label, required, error }: Signat
   };
 
   return (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700">
-        {label} {required && <span className="text-red-500">*</span>}
+    <div className="space-y-3 input-enhanced">
+      <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+        <PenTool className="w-4 h-4 text-purple-500" />
+        {label} {required && <span className="text-red-500 text-base">*</span>}
       </label>
 
-      <div className="border-2 border-gray-300 rounded-lg bg-white overflow-hidden shadow-sm">
-        <canvas
-          ref={canvasRef}
-          width={CANVAS_WIDTH}
-          height={CANVAS_HEIGHT}
-          className="w-full block bg-white border-b border-gray-200 cursor-crosshair"
-          style={{
-            touchAction: 'none',
-            display: 'block',
-            boxSizing: 'border-box',
-            height: 'clamp(180px, 38vw, 250px)',
-          }}
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={stopDrawing}
-          onMouseLeave={stopDrawing}
-          onTouchStart={startDrawing}
-          onTouchMove={draw}
-          onTouchEnd={stopDrawing}
-        />
+      <div 
+        className={`relative group rounded-2xl overflow-hidden border-2 transition-all duration-300 shadow-premium hover:shadow-premium-lg ${
+          error 
+            ? 'border-red-400 bg-red-50/30' 
+            : isHovering 
+            ? 'border-purple-400 bg-purple-50/30' 
+            : 'border-gray-200 bg-white'
+        }`}
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
+      >
+        {/* Canvas com gradiente de fundo */}
+        <div className="relative">
+          {isEmpty && !isDrawing && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+              <div className="text-center space-y-2 animate-bounce-in">
+                <PenTool className="w-12 h-12 text-gray-300 mx-auto" />
+                <p className="text-sm font-semibold text-gray-400">
+                  ✍️ Assine aqui
+                </p>
+              </div>
+            </div>
+          )}
+          
+          <canvas
+            ref={canvasRef}
+            width={CANVAS_WIDTH}
+            height={CANVAS_HEIGHT}
+            className={`w-full block cursor-crosshair transition-all duration-300 ${
+              isDrawing ? 'cursor-none' : 'cursor-crosshair'
+            }`}
+            style={{
+              touchAction: 'none',
+              display: 'block',
+              boxSizing: 'border-box',
+              height: 'clamp(200px, 40vw, 250px)',
+              backgroundColor: '#ffffff',
+            }}
+            onMouseDown={startDrawing}
+            onMouseMove={draw}
+            onMouseUp={stopDrawing}
+            onMouseLeave={stopDrawing}
+            onTouchStart={startDrawing}
+            onTouchMove={draw}
+            onTouchEnd={stopDrawing}
+          />
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 bg-gray-50">
+          {/* Cursor customizado durante desenho */}
+          {isDrawing && (
+            <div className="absolute top-2 left-2 animate-pulse">
+              <div className="w-3 h-3 bg-purple-500 rounded-full shadow-lg"></div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer com botões estilizados */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 glass border-t border-gray-200/50">
           <button
             type="button"
             onClick={clear}
-            className="w-full sm:w-auto justify-center flex items-center gap-2 px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 font-medium rounded-lg transition-colors"
+            className="group relative w-full sm:w-auto justify-center flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold rounded-xl transition-all duration-300 shadow-sm hover:shadow-premium-colored overflow-hidden"
           >
-            <Trash2 className="w-4 h-4" />
-            Limpar
+            <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
+            <span>Limpar</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
           </button>
 
           {!isEmpty && (
-            <div className="w-full sm:w-auto justify-center flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg font-medium text-sm">
-              <Check className="w-5 h-5" />
-              ✓ Assinatura capturada
+            <div className="w-full sm:w-auto justify-center flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-semibold shadow-sm animate-bounce-in">
+              <Check className="w-5 h-5 animate-pulse" />
+              <span>Assinatura capturada</span>
             </div>
           )}
 
           {isEmpty && (
-            <div className="w-full sm:w-auto text-center sm:text-left text-sm text-gray-500">
-              👆 Clique ou toque para desenhar a assinatura
+            <div className="hidden sm:flex items-center gap-2 px-4 py-2 text-sm text-gray-500 font-medium">
+              <span className="text-lg">👆</span>
+              <span>Clique ou toque para assinar</span>
             </div>
           )}
         </div>
+
+        {/* Borda animada no hover */}
+        {isHovering && !error && (
+          <div className="absolute inset-0 rounded-2xl pointer-events-none">
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500 opacity-20 animate-pulse"></div>
+          </div>
+        )}
       </div>
 
-      {error && <p className="text-sm text-red-500 font-medium">{error}</p>}
+      {error && (
+        <div className="flex items-start gap-2 text-sm text-red-600 animate-slide-in">
+          <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+          <p className="font-medium">{error}</p>
+        </div>
+      )}
     </div>
   );
 }

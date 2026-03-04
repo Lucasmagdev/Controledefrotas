@@ -31,62 +31,82 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="bg-white shadow-sm border-b sticky top-0 z-40">
+    <div className="min-h-screen gradient-mesh">
+      {/* Header Premium com Gradiente */}
+      <div className="glass sticky top-0 z-40 border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between py-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-red-700 p-1.5 rounded-lg">
-                <img src="/gontijofundacoes_logo.jpg" alt="Logo" className="w-8 h-8 rounded" />
+          <div className="flex items-center justify-between py-4 sm:py-5">
+            <div className="flex items-center gap-3 sm:gap-4 animate-slide-in">
+              <div className="relative group">
+                <div className="absolute inset-0 gradient-primary rounded-xl blur-sm group-hover:blur-md transition-all opacity-75"></div>
+                <div className="relative gradient-primary p-2 rounded-xl shadow-premium">
+                  <img 
+                    src="/gontijofundacoes_logo.jpg" 
+                    alt="Logo" 
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-cover ring-2 ring-white/50" 
+                  />
+                </div>
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-800">
+                <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">
                   Controle de Veículos
                 </h1>
-                <p className="text-sm text-gray-500">
-                  Gestão de retiradas e devoluções
+                <p className="text-xs sm:text-sm text-gray-600 font-medium mt-0.5">
+                  ✨ Gestão inteligente de frotas
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:flex gap-1 border-b">
+          {/* Tabs Modernos */}
+          <div className="grid grid-cols-2 sm:flex gap-2 pb-4">
             <button
               onClick={() => setActiveTab('form')}
-              className={`min-w-0 flex items-center justify-center gap-2 px-3 sm:px-6 py-3 text-sm sm:text-base font-medium transition-all whitespace-nowrap ${
+              className={`group relative flex items-center justify-center gap-2 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold rounded-xl transition-all duration-300 whitespace-nowrap ${
                 activeTab === 'form'
-                  ? 'text-red-700 border-b-2 border-red-700 bg-red-50'
-                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                  ? 'gradient-primary text-white shadow-premium-colored scale-105'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-white/80 hover:shadow-premium'
               }`}
             >
-              <FileText className="w-5 h-5" />
+              <FileText className={`w-5 h-5 transition-transform group-hover:scale-110 ${activeTab === 'form' ? 'animate-bounce-in' : ''}`} />
               <span className="sm:hidden">Formulário</span>
-              <span className="hidden sm:inline">Formulário de Registro</span>
+              <span className="hidden sm:inline">📝 Novo Registro</span>
+              {activeTab === 'form' && (
+                <div className="absolute inset-0 bg-white/20 rounded-xl animate-pulse"></div>
+              )}
             </button>
             <button
               onClick={() => setActiveTab('database')}
-              className={`min-w-0 flex items-center justify-center gap-2 px-3 sm:px-6 py-3 text-sm sm:text-base font-medium transition-all whitespace-nowrap ${
+              className={`group relative flex items-center justify-center gap-2 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold rounded-xl transition-all duration-300 whitespace-nowrap ${
                 activeTab === 'database'
-                  ? 'text-red-700 border-b-2 border-red-700 bg-red-50'
-                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                  ? 'gradient-primary text-white shadow-premium-colored scale-105'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-white/80 hover:shadow-premium'
               }`}
             >
-              <Database className="w-5 h-5" />
-              <span className="sm:hidden">Banco</span>
-              <span className="hidden sm:inline">Banco de Dados & Relatório</span>
+              <Database className={`w-5 h-5 transition-transform group-hover:scale-110 ${activeTab === 'database' ? 'animate-bounce-in' : ''}`} />
+              <span className="sm:hidden">Dados</span>
+              <span className="hidden sm:inline">📊 Banco & Relatórios</span>
+              {activeTab === 'database' && (
+                <div className="absolute inset-0 bg-white/20 rounded-xl animate-pulse"></div>
+              )}
             </button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+      {/* Content Area */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
         {activeTab === 'form' && (
           <div className="animate-fade-in">
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">
-                Novo Registro de Veículo
+            <div className="mb-6 sm:mb-8">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-50 to-orange-50 rounded-full mb-3 animate-bounce-in">
+                <span className="text-2xl">🚗</span>
+                <span className="text-sm font-semibold text-red-700">Registro de Veículo</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-2">
+                Novo Registro
               </h2>
-              <p className="text-gray-600 mt-1">
+              <p className="text-gray-600 text-base sm:text-lg">
                 Preencha os dados de retirada e, opcionalmente, de devolução
               </p>
             </div>
@@ -99,11 +119,15 @@ function App() {
 
         {activeTab === 'database' && (
           <div className="animate-fade-in">
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">
+            <div className="mb-6 sm:mb-8">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-full mb-3 animate-bounce-in">
+                <span className="text-2xl">📈</span>
+                <span className="text-sm font-semibold text-blue-700">Análise de Dados</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-2">
                 Banco de Dados & Relatórios
               </h2>
-              <p className="text-gray-600 mt-1">
+              <p className="text-gray-600 text-base sm:text-lg">
                 Visualize, busque, exporte e gerencie todos os registros
               </p>
             </div>

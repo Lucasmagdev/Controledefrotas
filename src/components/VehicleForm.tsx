@@ -183,11 +183,20 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6 space-y-4">
-        <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">
-          Informações do Veículo
-        </h3>
+    <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
+      {/* Card de Informações do Veículo */}
+      <div className="glass card-shine rounded-2xl p-6 sm:p-8 space-y-6 shadow-premium animate-fade-in">
+        <div className="flex items-center gap-3 pb-4 border-b border-gray-200/50">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
+            <span className="text-xl">🚗</span>
+          </div>
+          <div>
+            <h3 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+              Informações do Veículo
+            </h3>
+            <p className="text-sm text-gray-500">Dados básicos do veículo</p>
+          </div>
+        </div>
 
         <Input
           label="Placa/Veículo"
@@ -225,12 +234,21 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
         />
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6 space-y-4">
-        <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">
-          Retirada
-        </h3>
+      {/* Card de Retirada */}
+      <div className="glass card-shine rounded-2xl p-6 sm:p-8 space-y-6 shadow-premium animate-fade-in" style={{ animationDelay: '0.1s' }}>
+        <div className="flex items-center gap-3 pb-4 border-b border-gray-200/50">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
+            <span className="text-xl">📤</span>
+          </div>
+          <div>
+            <h3 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+              Retirada
+            </h3>
+            <p className="text-sm text-gray-500">Informações de quem retirou</p>
+          </div>
+        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Input
             label="Data"
             type="date"
@@ -280,12 +298,21 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
         />
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6 space-y-4">
-        <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">
-          Devolução (Opcional)
-        </h3>
+      {/* Card de Devolução */}
+      <div className="glass card-shine rounded-2xl p-6 sm:p-8 space-y-6 shadow-premium animate-fade-in" style={{ animationDelay: '0.2s' }}>
+        <div className="flex items-center gap-3 pb-4 border-b border-gray-200/50">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg">
+            <span className="text-xl">📥</span>
+          </div>
+          <div>
+            <h3 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+              Devolução
+            </h3>
+            <p className="text-sm text-gray-500">Opcional - preencha ao devolver</p>
+          </div>
+        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Input
             label="Data"
             type="date"
@@ -331,31 +358,46 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
         />
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border p-4 sm:p-6 space-y-4">
+      {/* Card de Observações */}
+      <div className="glass card-shine rounded-2xl p-6 sm:p-8 shadow-premium animate-fade-in" style={{ animationDelay: '0.3s' }}>
         <Textarea
           label="Observações"
           value={formData.observations || ''}
           onChange={(e) => setFormData((prev) => ({ ...prev, observations: e.target.value }))}
           placeholder="Informações adicionais (opcional)"
-          rows={3}
+          rows={4}
+          maxLength={500}
         />
       </div>
 
-      <div className="flex flex-col-reverse sm:flex-row gap-3 sm:justify-end">
+      {/* Botões de Ação */}
+      <div className="flex flex-col-reverse sm:flex-row gap-4 sm:justify-end animate-fade-in" style={{ animationDelay: '0.4s' }}>
         <button
           type="button"
           onClick={handleClear}
-          className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors"
+          className="group relative w-full sm:w-auto px-8 py-4 sm:py-3.5 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-700 font-bold rounded-xl transition-all duration-300 shadow-sm hover:shadow-premium overflow-hidden"
           disabled={isSubmitting}
         >
-          Limpar Formulário
+          <span className="relative z-10">🗑️ Limpar Formulário</span>
         </button>
         <button
           type="submit"
-          className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-red-700 hover:bg-red-800 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="btn-primary group relative w-full sm:w-auto px-8 py-4 sm:py-3.5 gradient-primary text-white font-bold rounded-xl transition-all duration-300 shadow-premium hover:shadow-premium-colored disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden"
           disabled={isSubmitting}
         >
-          {isSubmitting ? 'Salvando...' : editData?.id ? 'Atualizar Registro' : 'Salvar Registro'}
+          <span className="relative z-10 flex items-center justify-center gap-2">
+            {isSubmitting ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                Salvando...
+              </>
+            ) : (
+              <>
+                <span>💾</span>
+                {editData?.id ? 'Atualizar Registro' : 'Salvar Registro'}
+              </>
+            )}
+          </span>
         </button>
       </div>
     </form>
