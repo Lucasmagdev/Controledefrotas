@@ -183,4 +183,9 @@
       transform: scale(1);
     }
   }
+
+  /* Safe Area para dispositivos com notch */
+  .safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }

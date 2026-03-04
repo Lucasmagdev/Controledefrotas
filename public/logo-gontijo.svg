@@ -1,0 +1,17 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background vermelho -->
+  <rect width="200" height="200" fill="#C41E3A" rx="8"/>
+  
+  <!-- Círculo branco externo -->
+  <circle cx="100" cy="90" r="45" fill="white"/>
+  
+  <!-- Círculo vermelho interno -->
+  <circle cx="100" cy="90" r="30" fill="#C41E3A"/>
+  
+  <!-- Letra G estilizada -->
+  <path d="M115 90 L115 75 L130 75 L130 90 L115 90 Z" fill="white"/>
+  <path d="M115 90 L115 105 L130 105 L130 90 L115 90 Z" fill="white"/>
+  
+  <!-- Barra vertical central -->
+  <rect x="95" y="50" width="10" height="85" fill="white" rx="2"/>
+</svg>

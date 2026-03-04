@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { FileText, Database } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { FileText, Database, LogOut } from 'lucide-react';
 import { VehicleForm } from './components/VehicleForm';
 import { DatabaseView } from './components/DatabaseView';
 import { Toast } from './components/Toast';
 import { PWAInstallPrompt } from './components/PWAInstallPrompt';
+import { Login } from './components/Login';
 
 type Tab = 'form' | 'database';
 
@@ -14,9 +15,30 @@ interface ToastState {
 }
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('form');
   const [toast, setToast] = useState<ToastState>({ message: '', type: 'success', show: false });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Verificar autenticação ao carregar
+  useEffect(() => {
+    const auth = localStorage.getItem('isAuthenticated');
+    if (auth === 'true') {
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  const handleLogin = () => {
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    if (confirm('Deseja realmente sair do sistema?')) {
+      localStorage.removeItem('isAuthenticated');
+      setIsAuthenticated(false);
+      setActiveTab('form');
+    }
+  };
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type, show: true });
@@ -30,72 +52,40 @@ function App() {
     }, 1500);
   };
 
+  // Mostrar tela de login se não estiver autenticado
+  if (!isAuthenticated) {
+    return <Login onLogin={handleLogin} />;
+  }
+
   return (
-    <div className="min-h-screen gradient-mesh">
-      {/* Header Premium com Gradiente */}
+    <div className="min-h-screen gradient-mesh pb-20">
+      {/* Header Simplificado */}
       <div className="glass sticky top-0 z-40 border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between py-4 sm:py-5">
-            <div className="flex items-center gap-3 sm:gap-4 animate-slide-in">
-              <div className="relative group">
-                <div className="absolute inset-0 gradient-primary rounded-xl blur-sm group-hover:blur-md transition-all opacity-75"></div>
-                <div className="relative gradient-primary p-2 rounded-xl shadow-premium">
-                  <img 
-                    src="/gontijofundacoes_logo.jpg" 
-                    alt="Logo" 
-                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-cover ring-2 ring-white/50" 
-                  />
-                </div>
+          <div className="flex items-center justify-between py-4">
+            <div className="flex items-center gap-3 animate-slide-in">
+              <div className="relative">
+                <img 
+                  src="/gontijofundacoes_logo.jpg" 
+                  alt="Logo Gontijo" 
+                  className="w-12 h-12 sm:w-14 sm:h-14 object-contain" 
+                />
               </div>
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+                <h1 className="text-lg sm:text-xl font-bold text-gray-900">
                   Controle de Veículos
                 </h1>
-                <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+                <p className="text-xs text-gray-500">
                   Gestão inteligente de frotas
                 </p>
               </div>
             </div>
           </div>
-
-          {/* Tabs Modernos */}
-          <div className="grid grid-cols-2 sm:flex gap-2 pb-4">
-            <button
-              onClick={() => setActiveTab('form')}
-              className={`group relative flex items-center justify-center gap-2 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold rounded-xl transition-all duration-300 whitespace-nowrap ${
-                activeTab === 'form'
-                  ? 'gradient-primary text-white shadow-premium-colored scale-105'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-white/80 hover:shadow-premium'
-              }`}
-            >
-              <FileText className={`w-5 h-5 ${activeTab === 'form' ? '' : ''}`} />
-              <span className="sm:hidden">Formulário</span>
-              <span className="hidden sm:inline">Novo Registro</span>
-              {activeTab === 'form' && (
-                <div className="absolute inset-0 bg-white/20 rounded-xl animate-pulse"></div>
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('database')}
-              className={`group relative flex items-center justify-center gap-2 px-4 sm:px-6 py-3 sm:py-3.5 text-sm sm:text-base font-semibold rounded-xl transition-all duration-300 whitespace-nowrap ${
-                activeTab === 'database'
-                  ? 'gradient-primary text-white shadow-premium-colored scale-105'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-white/80 hover:shadow-premium'
-              }`}
-            >
-              <Database className={`w-5 h-5 ${activeTab === 'database' ? '' : ''}`} />
-              <span className="sm:hidden">Dados</span>
-              <span className="hidden sm:inline">Banco & Relatórios</span>
-              {activeTab === 'database' && (
-                <div className="absolute inset-0 bg-white/20 rounded-xl animate-pulse"></div>
-              )}
-            </button>
-          </div>
         </div>
       </div>
 
       {/* Content Area */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 mb-20">
         {activeTab === 'form' && (
           <div className="animate-fade-in">
             <div className="mb-6 sm:mb-8">
@@ -139,6 +129,43 @@ function App() {
           onClose={() => setToast((prev) => ({ ...prev, show: false }))}
         />
       )}
+
+      {/* Bottom Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 glass border-t border-white/20 safe-area-inset-bottom">
+        <div className="max-w-md mx-auto px-4">
+          <div className="grid grid-cols-3 gap-2 py-3">
+            <button
+              onClick={() => setActiveTab('form')}
+              className={`flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all duration-200 ${
+                activeTab === 'form'
+                  ? 'text-blue-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <FileText className={`w-6 h-6 ${activeTab === 'form' ? 'stroke-[2.5]' : 'stroke-2'}`} />
+              <span className="text-xs font-medium">Registro</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('database')}
+              className={`flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all duration-200 ${
+                activeTab === 'database'
+                  ? 'text-blue-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <Database className={`w-6 h-6 ${activeTab === 'database' ? 'stroke-[2.5]' : 'stroke-2'}`} />
+              <span className="text-xs font-medium">Banco</span>
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all duration-200 text-gray-500 hover:text-red-600"
+            >
+              <LogOut className="w-6 h-6 stroke-2" />
+              <span className="text-xs font-medium">Sair</span>
+            </button>
+          </div>
+        </div>
+      </nav>
 
       <PWAInstallPrompt />
     </div>
