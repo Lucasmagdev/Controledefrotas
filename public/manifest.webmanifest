@@ -1,0 +1,67 @@
+{
+  "name": "Sistema de Controle de Frotas",
+  "short_name": "Frotas",
+  "description": "Sistema de gestão de retirada e devolução de veículos com assinatura digital",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#b91c1c",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/gontijofundacoes_logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/gontijofundacoes_logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/gontijofundacoes_logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 720'><rect fill='%23f3f4f6' width='540' height='720'/><rect fill='%23b91c1c' width='540' height='100'/><text x='270' y='50' text-anchor='middle' font-size='24' font-weight='bold' fill='white' font-family='Arial'>Controle de Frotas</text></svg>",
+      "sizes": "540x720",
+      "type": "image/svg+xml",
+      "form_factor": "narrow"
+    }
+  ],
+  "categories": ["productivity"],
+  "shortcuts": [
+    {
+      "name": "Novo Registro",
+      "short_name": "Novo",
+      "description": "Criar novo registro de veículo",
+      "url": "/?tab=form",
+      "icons": [
+        {
+          "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect fill='%23b91c1c' width='96' height='96'/><text x='48' y='48' text-anchor='middle' dominant-baseline='middle' font-size='48' fill='white' font-family='Arial'>+</text></svg>",
+          "sizes": "96x96",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "Ver Banco de Dados",
+      "short_name": "Registros",
+      "description": "Ver todos os registros",
+      "url": "/?tab=database",
+      "icons": [
+        {
+          "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect fill='%23b91c1c' width='96' height='96'/><rect x='20' y='20' width='56' height='56' fill='none' stroke='white' stroke-width='3'/><line x1='30' y1='35' x2='66' y2='35' stroke='white' stroke-width='2'/></svg>",
+          "sizes": "96x96",
+          "type": "image/svg+xml"
+        }
+      ]
+    }
+  ]
+}
