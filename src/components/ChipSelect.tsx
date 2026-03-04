@@ -1,4 +1,4 @@
-import { AlertCircle, Sparkles } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 
 interface ChipSelectProps {
@@ -25,7 +25,6 @@ export function ChipSelect({
   return (
     <div className="space-y-3 input-enhanced">
       <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-        <Sparkles className="w-4 h-4 text-yellow-500" />
         {label} {required && <span className="text-red-500 text-base">*</span>}
       </label>
       
@@ -36,16 +35,13 @@ export function ChipSelect({
             key={suggestion}
             type="button"
             onClick={() => onChange(suggestion)}
-            className={`group relative px-4 py-2 text-sm font-semibold rounded-xl transition-all duration-300 overflow-hidden ${
+            className={`group relative px-4 py-2 text-sm font-semibold rounded-xl transition-all duration-200 ${
               value === suggestion
-                ? 'gradient-primary text-white shadow-premium-colored scale-105'
-                : 'bg-gradient-to-br from-gray-50 to-gray-100 hover:from-white hover:to-gray-50 text-gray-700 hover:text-gray-900 shadow-sm hover:shadow-premium border border-gray-200 hover:border-gray-300'
+                ? 'gradient-primary text-white shadow-md'
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200'
             }`}
           >
             <span className="relative z-10">{suggestion}</span>
-            {value === suggestion && (
-              <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
-            )}
           </button>
         ))}
       </div>

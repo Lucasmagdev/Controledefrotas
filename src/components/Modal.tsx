@@ -43,18 +43,14 @@ export function Modal({ isOpen, onClose, title, children, size = 'lg' }: ModalPr
         <div
           className={`relative glass rounded-2xl sm:rounded-3xl shadow-premium-lg w-full ${sizeClasses[size]} max-h-[92vh] overflow-hidden animate-scale-in`}
         >
-          {/* Header Premium */}
-          <div className="sticky top-0 glass-dark border-b border-white/10 px-6 sm:px-8 py-4 sm:py-5 flex items-center justify-between z-10">
-            <div className="flex items-center gap-3">
-              <div className="w-2 h-8 rounded-full gradient-primary"></div>
-              <h2 className="text-xl sm:text-2xl font-bold text-white drop-shadow-lg">{title}</h2>
-            </div>
+          {/* Header */}
+          <div className="sticky top-0 bg-white border-b px-6 sm:px-8 py-4 sm:py-5 flex items-center justify-between z-10">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{title}</h2>
             <button
               onClick={onClose}
-              className="group relative p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all duration-200 hover:scale-110"
+              className="group relative p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 transition-all duration-200"
             >
               <X className="w-6 h-6" />
-              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-red-500/20 to-red-600/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
             </button>
           </div>
           

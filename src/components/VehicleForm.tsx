@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Truck, LogOut, LogIn, FileText, Save, RotateCcw } from 'lucide-react';
 import { Input } from './Input';
 import { Textarea } from './Textarea';
 import { ChipSelect } from './ChipSelect';
@@ -187,11 +188,11 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
       {/* Card de Informações do Veículo */}
       <div className="glass card-shine rounded-2xl p-6 sm:p-8 space-y-6 shadow-premium animate-fade-in">
         <div className="flex items-center gap-3 pb-4 border-b border-gray-200/50">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
-            <span className="text-xl">🚗</span>
+          <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+            <Truck className="w-5 h-5 text-blue-600" />
           </div>
           <div>
-            <h3 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+            <h3 className="text-xl font-bold text-gray-900">
               Informações do Veículo
             </h3>
             <p className="text-sm text-gray-500">Dados básicos do veículo</p>
@@ -237,11 +238,11 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
       {/* Card de Retirada */}
       <div className="glass card-shine rounded-2xl p-6 sm:p-8 space-y-6 shadow-premium animate-fade-in" style={{ animationDelay: '0.1s' }}>
         <div className="flex items-center gap-3 pb-4 border-b border-gray-200/50">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
-            <span className="text-xl">📤</span>
+          <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
+            <LogOut className="w-5 h-5 text-green-600" />
           </div>
           <div>
-            <h3 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+            <h3 className="text-xl font-bold text-gray-900">
               Retirada
             </h3>
             <p className="text-sm text-gray-500">Informações de quem retirou</p>
@@ -301,11 +302,11 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
       {/* Card de Devolução */}
       <div className="glass card-shine rounded-2xl p-6 sm:p-8 space-y-6 shadow-premium animate-fade-in" style={{ animationDelay: '0.2s' }}>
         <div className="flex items-center gap-3 pb-4 border-b border-gray-200/50">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg">
-            <span className="text-xl">📥</span>
+          <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
+            <LogIn className="w-5 h-5 text-purple-600" />
           </div>
           <div>
-            <h3 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+            <h3 className="text-xl font-bold text-gray-900">
               Devolução
             </h3>
             <p className="text-sm text-gray-500">Opcional - preencha ao devolver</p>
@@ -375,29 +376,28 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
         <button
           type="button"
           onClick={handleClear}
-          className="group relative w-full sm:w-auto px-8 py-4 sm:py-3.5 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-700 font-bold rounded-xl transition-all duration-300 shadow-sm hover:shadow-premium overflow-hidden"
+          className="group relative w-full sm:w-auto px-8 py-3.5 bg-white border-2 border-gray-300 hover:border-gray-400 text-gray-700 font-semibold rounded-xl transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center gap-2"
           disabled={isSubmitting}
         >
-          <span className="relative z-10">🗑️ Limpar Formulário</span>
+          <RotateCcw className="w-5 h-5" />
+          <span>Limpar Formulário</span>
         </button>
         <button
           type="submit"
-          className="btn-primary group relative w-full sm:w-auto px-8 py-4 sm:py-3.5 gradient-primary text-white font-bold rounded-xl transition-all duration-300 shadow-premium hover:shadow-premium-colored disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden"
+          className="group relative w-full sm:w-auto px-8 py-3.5 gradient-primary text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           disabled={isSubmitting}
         >
-          <span className="relative z-10 flex items-center justify-center gap-2">
-            {isSubmitting ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                Salvando...
-              </>
-            ) : (
-              <>
-                <span>💾</span>
-                {editData?.id ? 'Atualizar Registro' : 'Salvar Registro'}
-              </>
-            )}
-          </span>
+          {isSubmitting ? (
+            <>
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              <span>Salvando...</span>
+            </>
+          ) : (
+            <>
+              <Save className="w-5 h-5" />
+              <span>{editData?.id ? 'Atualizar Registro' : 'Salvar Registro'}</span>
+            </>
+          )}
         </button>
       </div>
     </form>

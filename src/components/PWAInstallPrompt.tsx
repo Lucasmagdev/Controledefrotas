@@ -84,8 +84,8 @@ export function PWAInstallPrompt() {
             
             {/* Conteúdo */}
             <div className="flex-1">
-              <h3 className="text-lg font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-1">
-                📱 Instalar App
+              <h3 className="text-lg font-bold text-gray-900 mb-1">
+                Instalar App
               </h3>
               <p className="text-sm text-gray-700 font-medium leading-relaxed">
                 Instale o Sistema de Frotas para acesso rápido e offline!
@@ -105,16 +105,14 @@ export function PWAInstallPrompt() {
           <div className="flex gap-3">
             <button
               onClick={handleInstall}
-              className="btn-primary group relative flex-1 px-5 py-3.5 gradient-primary text-white font-bold rounded-xl transition-all duration-300 shadow-premium hover:shadow-premium-colored overflow-hidden"
+              className="group relative flex-1 px-5 py-3.5 gradient-primary text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center gap-2"
             >
-              <span className="relative z-10 flex items-center justify-center gap-2">
-                <Download className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                Instalar Agora
-              </span>
+              <Download className="w-5 h-5" />
+              <span>Instalar Agora</span>
             </button>
             <button
               onClick={() => setShowPrompt(false)}
-              className="px-5 py-3.5 bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-700 font-bold rounded-xl transition-all duration-200 shadow-sm hover:shadow-premium"
+              className="px-5 py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-all duration-200"
             >
               Depois
             </button>

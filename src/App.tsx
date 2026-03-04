@@ -48,11 +48,11 @@ function App() {
                 </div>
               </div>
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
                   Controle de Veículos
                 </h1>
-                <p className="text-xs sm:text-sm text-gray-600 font-medium mt-0.5">
-                  ✨ Gestão inteligente de frotas
+                <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+                  Gestão inteligente de frotas
                 </p>
               </div>
             </div>
@@ -68,9 +68,9 @@ function App() {
                   : 'text-gray-600 hover:text-gray-900 hover:bg-white/80 hover:shadow-premium'
               }`}
             >
-              <FileText className={`w-5 h-5 transition-transform group-hover:scale-110 ${activeTab === 'form' ? 'animate-bounce-in' : ''}`} />
+              <FileText className={`w-5 h-5 ${activeTab === 'form' ? '' : ''}`} />
               <span className="sm:hidden">Formulário</span>
-              <span className="hidden sm:inline">📝 Novo Registro</span>
+              <span className="hidden sm:inline">Novo Registro</span>
               {activeTab === 'form' && (
                 <div className="absolute inset-0 bg-white/20 rounded-xl animate-pulse"></div>
               )}
@@ -83,9 +83,9 @@ function App() {
                   : 'text-gray-600 hover:text-gray-900 hover:bg-white/80 hover:shadow-premium'
               }`}
             >
-              <Database className={`w-5 h-5 transition-transform group-hover:scale-110 ${activeTab === 'database' ? 'animate-bounce-in' : ''}`} />
+              <Database className={`w-5 h-5 ${activeTab === 'database' ? '' : ''}`} />
               <span className="sm:hidden">Dados</span>
-              <span className="hidden sm:inline">📊 Banco & Relatórios</span>
+              <span className="hidden sm:inline">Banco & Relatórios</span>
               {activeTab === 'database' && (
                 <div className="absolute inset-0 bg-white/20 rounded-xl animate-pulse"></div>
               )}
@@ -99,14 +99,10 @@ function App() {
         {activeTab === 'form' && (
           <div className="animate-fade-in">
             <div className="mb-6 sm:mb-8">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-50 to-orange-50 rounded-full mb-3 animate-bounce-in">
-                <span className="text-2xl">🚗</span>
-                <span className="text-sm font-semibold text-red-700">Registro de Veículo</span>
-              </div>
-              <h2 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-2">
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
                 Novo Registro
               </h2>
-              <p className="text-gray-600 text-base sm:text-lg">
+              <p className="text-gray-600">
                 Preencha os dados de retirada e, opcionalmente, de devolução
               </p>
             </div>
@@ -120,14 +116,10 @@ function App() {
         {activeTab === 'database' && (
           <div className="animate-fade-in">
             <div className="mb-6 sm:mb-8">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-full mb-3 animate-bounce-in">
-                <span className="text-2xl">📈</span>
-                <span className="text-sm font-semibold text-blue-700">Análise de Dados</span>
-              </div>
-              <h2 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-2">
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
                 Banco de Dados & Relatórios
               </h2>
-              <p className="text-gray-600 text-base sm:text-lg">
+              <p className="text-gray-600">
                 Visualize, busque, exporte e gerencie todos os registros
               </p>
             </div>

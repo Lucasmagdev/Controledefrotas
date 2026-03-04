@@ -16,64 +16,52 @@
 @layer utilities {
   /* Animações de entrada */
   .animate-fade-in {
-    animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: fadeIn 0.4s ease-out;
   }
 
   .animate-slide-up {
-    animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: slideUp 0.5s ease-out;
   }
 
   .animate-slide-in {
-    animation: slideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: slideIn 0.4s ease-out;
   }
 
   .animate-scale-in {
-    animation: scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: scaleIn 0.3s ease-out;
   }
 
   .animate-bounce-in {
-    animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    animation: bounceIn 0.5s ease-out;
   }
 
-  /* Efeito Glassmorphism */
+  /* Efeito Glassmorphism Simplificado */
   .glass {
-    @apply bg-white/90 backdrop-blur-xl border border-white/20;
-    box-shadow: 
-      0 8px 32px 0 rgba(185, 28, 28, 0.1),
-      inset 0 1px 1px 0 rgba(255, 255, 255, 0.8);
+    @apply bg-white/95 backdrop-blur-md border border-gray-200/50;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   }
 
   .glass-dark {
-    @apply bg-gray-900/70 backdrop-blur-xl border border-white/10;
-    box-shadow: 
-      0 8px 32px 0 rgba(0, 0, 0, 0.3),
-      inset 0 1px 1px 0 rgba(255, 255, 255, 0.1);
+    @apply bg-gray-900/90 backdrop-blur-md border border-white/10;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   }
 
-  /* Shadows premium */
+  /* Shadows Simplificadas */
   .shadow-premium {
-    box-shadow: 
-      0 1px 2px rgba(0, 0, 0, 0.02),
-      0 4px 8px rgba(0, 0, 0, 0.04),
-      0 12px 24px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   }
 
   .shadow-premium-lg {
-    box-shadow: 
-      0 2px 4px rgba(0, 0, 0, 0.02),
-      0 8px 16px rgba(0, 0, 0, 0.04),
-      0 24px 48px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   }
 
   .shadow-premium-colored {
-    box-shadow: 
-      0 4px 16px rgba(185, 28, 28, 0.2),
-      0 8px 32px rgba(185, 28, 28, 0.15);
+    box-shadow: 0 4px 12px rgba(185, 28, 28, 0.2);
   }
 
   /* Gradientes */
   .gradient-primary {
-    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 50%, #991b1b 100%);
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
   }
 
   .gradient-secondary {
@@ -82,20 +70,18 @@
 
   .gradient-mesh {
     background: 
-      radial-gradient(at 0% 0%, rgba(220, 38, 38, 0.1) 0px, transparent 50%),
-      radial-gradient(at 100% 0%, rgba(185, 28, 28, 0.08) 0px, transparent 50%),
-      radial-gradient(at 100% 100%, rgba(153, 27, 27, 0.05) 0px, transparent 50%),
-      radial-gradient(at 0% 100%, rgba(220, 38, 38, 0.06) 0px, transparent 50%),
-      linear-gradient(180deg, #ffffff 0%, #fafafa 100%);
+      radial-gradient(at 0% 0%, rgba(220, 38, 38, 0.05) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(185, 28, 28, 0.03) 0px, transparent 50%),
+      #fafafa;
   }
 
   /* Estados interativos */
   .interactive-lift {
-    @apply transition-all duration-300 ease-out;
+    @apply transition-all duration-200 ease-out;
   }
 
   .interactive-lift:hover {
-    @apply -translate-y-1 shadow-premium-lg;
+    @apply -translate-y-0.5 shadow-premium-lg;
   }
 
   .interactive-lift:active {
@@ -104,8 +90,7 @@
 
   /* Skeleton loading */
   .skeleton {
-    @apply animate-pulse bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 bg-[length:200%_100%];
-    animation: shimmer 1.5s infinite;
+    @apply animate-pulse bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200;
   }
 
   /* Inputs com efeito */
@@ -113,117 +98,12 @@
     @apply relative;
   }
 
-  .input-enhanced:focus-within {
-    @apply scale-[1.01];
-  }
-
-  /* Efeito hover em botões */
+  /* Efeito hover em botões - Simplificado */
   .btn-primary {
     @apply relative overflow-hidden;
   }
 
-  .btn-primary::before {
-    content: '';
-    @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent;
-    transform: translateX(-100%);
-    transition: transform 0.6s;
-  }
-
-  .btn-primary:hover::before {
-    transform: translateX(100%);
-  }
-
-  /* Badge moderno */
-  .badge-modern {
-    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium;
-    @apply bg-gradient-to-r shadow-sm;
-  }
-
-  /* Keyframes */
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(20px) scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-  }
-
-  @keyframes slideUp {
-    from {
-      opacity: 0;
-      transform: translateY(40px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translateX(40px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
-  @keyframes scaleIn {
-    from {
-      opacity: 0;
-      transform: scale(0.9);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-
-  @keyframes bounceIn {
-    0% {
-      opacity: 0;
-      transform: scale(0.3);
-    }
-    50% {
-      opacity: 1;
-      transform: scale(1.05);
-    }
-    70% {
-      transform: scale(0.9);
-    }
-    100% {
-      transform: scale(1);
-    }
-  }
-
-  @keyframes shimmer {
-    0% {
-      background-position: -200% 0;
-    }
-    100% {
-      background-position: 200% 0;
-    }
-  }
-
-  @keyframes float {
-    0%, 100% {
-      transform: translateY(0px);
-    }
-    50% {
-      transform: translateY(-10px);
-    }
-  }
-
-  .animate-float {
-    animation: float 3s ease-in-out infinite;
-  }
-
-  /* Efeito de brilho nos cards */
+  /* Efeito de brilho nos cards - Simplificado */
   .card-shine {
     @apply relative overflow-hidden;
   }
@@ -234,7 +114,7 @@
     background: linear-gradient(
       90deg,
       transparent,
-      rgba(255, 255, 255, 0.3),
+      rgba(255, 255, 255, 0.2),
       transparent
     );
     transform: translateX(-100%);
@@ -242,6 +122,65 @@
 
   .card-shine:hover::after {
     transform: translateX(100%);
-    transition: transform 0.8s;
+    transition: transform 0.6s;
+  }
+
+  /* Keyframes Simplificadas */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes bounceIn {
+    0% {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+    50% {
+      transform: scale(1.02);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
   }
 }

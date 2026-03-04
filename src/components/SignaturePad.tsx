@@ -247,7 +247,7 @@ export function SignaturePad({ value, onChange, label, required, error }: Signat
               <div className="text-center space-y-2 animate-bounce-in">
                 <PenTool className="w-12 h-12 text-gray-300 mx-auto" />
                 <p className="text-sm font-semibold text-gray-400">
-                  ✍️ Assine aqui
+                  Assine aqui
                 </p>
               </div>
             </div>
@@ -289,23 +289,21 @@ export function SignaturePad({ value, onChange, label, required, error }: Signat
           <button
             type="button"
             onClick={clear}
-            className="group relative w-full sm:w-auto justify-center flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold rounded-xl transition-all duration-300 shadow-sm hover:shadow-premium-colored overflow-hidden"
+            className="group relative w-full sm:w-auto justify-center flex items-center gap-2 px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl transition-all duration-200 shadow-sm hover:shadow-md"
           >
-            <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
+            <Trash2 className="w-4 h-4" />
             <span>Limpar</span>
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
           </button>
 
           {!isEmpty && (
-            <div className="w-full sm:w-auto justify-center flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-semibold shadow-sm animate-bounce-in">
-              <Check className="w-5 h-5 animate-pulse" />
+            <div className="w-full sm:w-auto justify-center flex items-center gap-2 px-5 py-2.5 bg-green-500 text-white rounded-xl font-semibold shadow-sm animate-bounce-in">
+              <Check className="w-5 h-5" />
               <span>Assinatura capturada</span>
             </div>
           )}
 
           {isEmpty && (
             <div className="hidden sm:flex items-center gap-2 px-4 py-2 text-sm text-gray-500 font-medium">
-              <span className="text-lg">👆</span>
               <span>Clique ou toque para assinar</span>
             </div>
           )}

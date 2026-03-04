@@ -68,7 +68,7 @@ export function Toast({ message, type, onClose, duration = 4000 }: ToastProps) {
           {/* Mensagem */}
           <div className="flex-1 pt-1">
             <p className="text-sm font-bold text-gray-900 mb-1">
-              {type === 'success' ? '✅ Sucesso!' : '❌ Erro!'}
+              {type === 'success' ? 'Sucesso!' : 'Erro!'}
             </p>
             <p className="text-sm text-gray-700 font-medium leading-relaxed">{message}</p>
           </div>
