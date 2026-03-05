@@ -281,7 +281,7 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
           {/* Tabela Desktop Premium */}
           <div className="hidden md:block glass rounded-2xl shadow-premium overflow-hidden animate-fade-in">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-[980px]">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
@@ -405,14 +405,14 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
                 className="glass rounded-2xl p-5 shadow-md animate-fade-in"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-3">
+                <div className="flex justify-between items-start mb-4 gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center text-red-700 font-bold">
                       {record.vehicle_plate.substring(0, 2)}
                     </div>
-                    <div>
-                      <p className="font-bold text-gray-900 text-lg">{record.vehicle_plate}</p>
-                      <p className="text-sm text-gray-600">{record.pickup_name}</p>
+                    <div className="min-w-0">
+                      <p className="font-bold text-gray-900 text-lg truncate">{record.vehicle_plate}</p>
+                      <p className="text-sm text-gray-600 truncate">{record.pickup_name}</p>
                     </div>
                   </div>
                   <span
@@ -443,13 +443,13 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
                   )}
                 </div>
                 
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   <button
                     onClick={() => {
                       setSelectedRecord(record);
                       setIsDetailsOpen(true);
                     }}
-                    className="flex flex-col items-center gap-1.5 px-3 py-3 bg-blue-50 text-blue-600 rounded-xl font-semibold text-xs hover:bg-blue-100 transition-colors"
+                    className="flex flex-col items-center gap-1.5 px-3 py-3 bg-blue-50 text-blue-600 rounded-xl font-semibold text-xs hover:bg-blue-100 transition-colors col-span-2 sm:col-span-1"
                   >
                     <Eye className="w-5 h-5" />
                     Ver
@@ -457,7 +457,7 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
                   {record.status === 'Em uso' ? (
                     <button
                       onClick={() => handleEdit(record)}
-                      className="flex flex-col items-center gap-1.5 px-3 py-3 bg-purple-600 text-white rounded-xl font-semibold text-xs hover:bg-purple-700 transition-colors col-span-1"
+                      className="flex flex-col items-center gap-1.5 px-3 py-3 bg-purple-600 text-white rounded-xl font-semibold text-xs hover:bg-purple-700 transition-colors"
                     >
                       <LogIn className="w-5 h-5" />
                       Devol.
@@ -519,7 +519,7 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
           </div>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={() => {
               setVehicleFilterStart('');
@@ -643,7 +643,7 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
             <p className="text-gray-700">Esta ação não pode ser desfeita.</p>
           </div>
           
-          <div className="flex gap-3">
+          <div className="flex flex-col-reverse sm:flex-row gap-3">
             <button
               onClick={() => setDeleteConfirm(null)}
               className="flex-1 px-6 py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-all duration-200 shadow-sm"

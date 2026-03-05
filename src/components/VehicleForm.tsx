@@ -13,7 +13,6 @@ interface VehicleFormProps {
   onError: (message: string) => void;
   editData?: VehicleRecordInput & { id?: string };
 }
-
 const REASON_SUGGESTIONS = ['Visita tecnica', 'Entrega', 'Reuniao', 'Manutencao', 'Outro'];
 const AUTHORIZATION_SUGGESTIONS = ['Gestor', 'Diretoria', 'RH', 'Coordenacao', 'Outro'];
 
@@ -203,8 +202,8 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
             </div>
             <div className="flex-1">
               <h2 className="text-xl font-bold text-gray-900">Registrar Devolucao</h2>
-              <p className="text-sm text-gray-600 mt-1">
-                Veiculo: <span className="font-semibold text-purple-700">{formData.vehicle_plate}</span> ·
+              <p className="text-sm text-gray-600 mt-1 break-words">
+                Veiculo: <span className="font-semibold text-purple-700">{formData.vehicle_plate}</span> -
                 Retirado por: <span className="font-semibold text-purple-700">{formData.pickup_name}</span>
               </p>
             </div>
@@ -327,7 +326,7 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
       <div className={`glass card-shine rounded-2xl p-6 sm:p-8 space-y-6 shadow-premium animate-fade-in ${
         isReturnMode ? 'opacity-60 bg-gray-50' : ''
       }`} style={{ animationDelay: '0.1s' }}>
-        <div className="flex items-center gap-3 pb-4 border-b border-gray-200/50">
+        <div className="flex items-center gap-3 pb-4 border-b border-gray-200/50 flex-wrap">
           <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
             <LogOut className="w-5 h-5 text-green-600" />
           </div>
@@ -383,17 +382,30 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
           error={errors.pickup_name}
         />
 
-        <SignaturePad
-          label="Assinatura"
-          value={formData.pickup_signature}
-          onChange={(signature) => {
-            setFormData((prev) => ({ ...prev, pickup_signature: signature }));
-            if (errors.pickup_signature) setErrors((prev) => ({ ...prev, pickup_signature: '' }));
-          }}
-          disabled={isReturnMode}
-          required
-          error={errors.pickup_signature}
-        />
+        {isReturnMode ? (
+          <div className="space-y-2">
+            <label className="block text-sm font-semibold text-gray-700">Assinatura</label>
+            <div className="rounded-xl border border-gray-200 bg-white p-3">
+              <img
+                src={formData.pickup_signature}
+                alt="Assinatura de retirada"
+                className="w-full max-h-32 sm:max-h-40 object-contain"
+              />
+            </div>
+          </div>
+        ) : (
+          <SignaturePad
+            label="Assinatura"
+            value={formData.pickup_signature}
+            onChange={(signature) => {
+              setFormData((prev) => ({ ...prev, pickup_signature: signature }));
+              if (errors.pickup_signature) setErrors((prev) => ({ ...prev, pickup_signature: '' }));
+            }}
+            disabled={isReturnMode}
+            required
+            error={errors.pickup_signature}
+          />
+        )}
       </div>
 
       {isReturnMode && (
@@ -521,3 +533,4 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
     </form>
   );
 }
+
