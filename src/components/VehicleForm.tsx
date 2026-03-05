@@ -494,7 +494,14 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
         </div>
       )}
 
-      <div className="flex flex-col-reverse sm:flex-row gap-4 sm:justify-end animate-fade-in" style={{ animationDelay: isReturnMode ? '0.2s' : '0.4s' }}>
+      <div
+        className={`flex flex-col-reverse sm:flex-row gap-4 sm:justify-end animate-fade-in ${
+          isReturnMode
+            ? 'sticky bottom-0 z-20 -mx-6 sm:-mx-8 px-6 sm:px-8 py-4 bg-white/95 backdrop-blur border-t border-gray-200'
+            : ''
+        }`}
+        style={{ animationDelay: isReturnMode ? '0.2s' : '0.4s' }}
+      >
         {isNewPickup && (
           <button
             type="button"
