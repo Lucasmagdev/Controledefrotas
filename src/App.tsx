@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
-import { FileText, Database, LogOut } from 'lucide-react';
+import { FileText, Database, LogOut, BarChart3, Car } from 'lucide-react';
 import { VehicleForm } from './components/VehicleForm';
 import { DatabaseView } from './components/DatabaseView';
+import { Dashboard } from './components/Dashboard';
+import { VehiclesView } from './components/VehiclesView';
 import { Toast } from './components/Toast';
 import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { Login } from './components/Login';
+import { vehicleService } from './services/vehicleService';
+import type { VehicleRecord } from './types/database';
 
-type Tab = 'form' | 'database';
+type Tab = 'form' | 'database' | 'dashboard' | 'vehicles';
 
 interface ToastState {
   message: string;
@@ -19,6 +23,23 @@ function App() {
   const [activeTab, setActiveTab] = useState<Tab>('form');
   const [toast, setToast] = useState<ToastState>({ message: '', type: 'success', show: false });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [records, setRecords] = useState<VehicleRecord[]>([]);
+
+  // Carregar registros para o dashboard
+  useEffect(() => {
+    if (activeTab === 'dashboard') {
+      loadRecords();
+    }
+  }, [activeTab, refreshTrigger]);
+
+  const loadRecords = async () => {
+    try {
+      const data = await vehicleService.listRecords();
+      setRecords(data);
+    } catch (error) {
+      console.error('Erro ao carregar registros:', error);
+    }
+  };
 
   // Verificar autenticação ao carregar
   useEffect(() => {
@@ -107,7 +128,7 @@ function App() {
           <div className="animate-fade-in">
             <div className="mb-6 sm:mb-8">
               <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-                Banco de Dados & Relatórios
+                Banco de Dados
               </h2>
               <p className="text-gray-600">
                 Visualize, busque, exporte e gerencie todos os registros
@@ -117,6 +138,21 @@ function App() {
               onSuccess={(message) => showToast(message, 'success')}
               onError={(message) => showToast(message, 'error')}
               refreshTrigger={refreshTrigger}
+            />
+          </div>
+        )}
+
+        {activeTab === 'dashboard' && (
+          <div className="animate-fade-in">
+            <Dashboard records={records} />
+          </div>
+        )}
+
+        {activeTab === 'vehicles' && (
+          <div className="animate-fade-in">
+            <VehiclesView
+              onSuccess={(message) => showToast(message, 'success')}
+              onError={(message) => showToast(message, 'error')}
             />
           </div>
         )}
@@ -132,8 +168,8 @@ function App() {
 
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 glass border-t border-white/20 safe-area-inset-bottom">
-        <div className="max-w-md mx-auto px-4">
-          <div className="grid grid-cols-3 gap-2 py-3">
+        <div className="max-w-xl mx-auto px-4">
+          <div className="grid grid-cols-5 gap-1 py-3">
             <button
               onClick={() => setActiveTab('form')}
               className={`flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all duration-200 ${
@@ -155,6 +191,28 @@ function App() {
             >
               <Database className={`w-6 h-6 ${activeTab === 'database' ? 'stroke-[2.5]' : 'stroke-2'}`} />
               <span className="text-xs font-medium">Banco</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all duration-200 ${
+                activeTab === 'dashboard'
+                  ? 'text-blue-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <BarChart3 className={`w-6 h-6 ${activeTab === 'dashboard' ? 'stroke-[2.5]' : 'stroke-2'}`} />
+              <span className="text-xs font-medium">Relatórios</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('vehicles')}
+              className={`flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all duration-200 ${
+                activeTab === 'vehicles'
+                  ? 'text-blue-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <Car className={`w-6 h-6 ${activeTab === 'vehicles' ? 'stroke-[2.5]' : 'stroke-2'}`} />
+              <span className="text-xs font-medium">Veículos</span>
             </button>
             <button
               onClick={handleLogout}

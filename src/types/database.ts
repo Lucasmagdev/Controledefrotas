@@ -17,6 +17,23 @@ export interface VehicleRecord {
   updated_at: string;
 }
 
+export type VehicleStatus = 'Ativo' | 'Inativo' | 'Em Manut.';
+
+export interface FleetVehicle {
+  id: string;
+  plate: string;
+  name: string;
+  status: VehicleStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FleetVehicleInput {
+  plate: string;
+  name: string;
+  status: VehicleStatus;
+}
+
 export interface VehicleRecordInput {
   vehicle_plate: string;
   reason: string;
@@ -36,6 +53,23 @@ export interface VehicleRecordInput {
 export interface Database {
   public: {
     Tables: {
+      vehicles: {
+        Row: FleetVehicle;
+        Insert: {
+          id?: string;
+          plate: string;
+          name: string;
+          status: VehicleStatus;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          plate?: string;
+          name?: string;
+          status?: VehicleStatus;
+          updated_at?: string;
+        };
+      };
       vehicle_records: {
         Row: VehicleRecord;
         Insert: Omit<VehicleRecord, 'id' | 'created_at' | 'updated_at'>;
