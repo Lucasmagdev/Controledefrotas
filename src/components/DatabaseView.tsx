@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, Download, Printer, Eye, Edit2, Trash2, BarChart3, TrendingUp, CheckCircle2 } from 'lucide-react';
+import { Search, Filter, Download, Printer, Eye, Edit2, Trash2, BarChart3, TrendingUp, CheckCircle2, Plus, FileSpreadsheet } from 'lucide-react';
 import { vehicleService } from '../services/vehicleService';
+import { vehicleCatalogService } from '../services/vehicleCatalogService';
 import { RecordDetails } from './RecordDetails';
 import { Modal } from './Modal';
 import { VehicleForm } from './VehicleForm';
-import { exportToCSV, generatePrintReport } from '../utils/export';
-import type { VehicleRecord } from '../types/database';
+import { exportToCSV, exportDailyUtilizationExcel, generatePrintReport } from '../utils/export';
+import type { VehicleRecord, FleetVehicle } from '../types/database';
 
 interface DatabaseViewProps {
   onSuccess: (message: string) => void;
@@ -16,11 +17,14 @@ interface DatabaseViewProps {
 export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseViewProps) {
   const [records, setRecords] = useState<VehicleRecord[]>([]);
   const [filteredRecords, setFilteredRecords] = useState<VehicleRecord[]>([]);
+  const [filteredVehicles, setFilteredVehicles] = useState<FleetVehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('Todos');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [recordFilterStart, setRecordFilterStart] = useState('');
+  const [recordFilterEnd, setRecordFilterEnd] = useState('');
+  const [vehicleFilterStart, setVehicleFilterStart] = useState('');
+  const [vehicleFilterEnd, setVehicleFilterEnd] = useState('');
   const [selectedRecord, setSelectedRecord] = useState<VehicleRecord | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -34,8 +38,8 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
       const data = await vehicleService.listRecords({
         search: searchTerm,
         status: statusFilter,
-        startDate,
-        endDate,
+        startDate: recordFilterStart,
+        endDate: recordFilterEnd,
       });
       console.log(`✅ ${data.length} registro(s) carregado(s)`, data);
       setRecords(data);
@@ -48,13 +52,51 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
     }
   };
 
+  const loadVehiclesByDate = async () => {
+    try {
+      const allVehicles = await vehicleCatalogService.listVehicles();
+      console.log('📊 Veículos carregados:', allVehicles);
+      
+      if (vehicleFilterStart) {
+        const filterStart = vehicleFilterStart;
+        const filterEnd = vehicleFilterEnd || vehicleFilterStart;
+        
+        console.log('🔍 Filtrando veículos entre:', filterStart, 'e', filterEnd);
+
+        const filtered = allVehicles.filter(v => {
+          const createdDateStr = v.created_at.split('T')[0];
+          return createdDateStr >= filterStart && createdDateStr <= filterEnd;
+        });
+        
+        console.log('✅ Veículos filtrados:', filtered);
+        setFilteredVehicles(filtered);
+      } else {
+        setFilteredVehicles([]);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar veículos:', error);
+    }
+  };
+
+  useEffect(() => {
+    // Pré-popular com a data de hoje ao montar o componente
+    const today = new Date();
+    const todayStr = `${String(today.getFullYear())}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    setVehicleFilterStart(todayStr);
+    setVehicleFilterEnd(todayStr);
+  }, []);
+
   useEffect(() => {
     loadRecords();
   }, [refreshTrigger]);
 
   useEffect(() => {
     loadRecords();
-  }, [searchTerm, statusFilter, startDate, endDate]);
+  }, [searchTerm, statusFilter, recordFilterStart, recordFilterEnd]);
+
+  useEffect(() => {
+    loadVehiclesByDate();
+  }, [vehicleFilterStart, vehicleFilterEnd]);
 
   const handleDelete = async (id: string) => {
     try {
@@ -79,8 +121,13 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
     onSuccess('Relatório exportado com sucesso');
   };
 
+  const handleDailyUtilizationExport = () => {
+    exportDailyUtilizationExcel(filteredRecords, filteredVehicles);
+    onSuccess('Utilização diária exportada com sucesso');
+  };
+
   const handlePrint = () => {
-    generatePrintReport(filteredRecords, { startDate, endDate, status: statusFilter });
+    generatePrintReport(filteredRecords, { startDate: recordFilterStart, endDate: recordFilterEnd, status: statusFilter });
   };
 
   const stats = {
@@ -120,16 +167,16 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
 
             <input
               type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              value={recordFilterStart}
+              onChange={(e) => setRecordFilterStart(e.target.value)}
               placeholder="Data inicial"
               className="flex-1 sm:flex-none px-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-red-100 focus:border-red-500 transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
             />
 
             <input
               type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              value={recordFilterEnd}
+              onChange={(e) => setRecordFilterEnd(e.target.value)}
               placeholder="Data final"
               className="flex-1 sm:flex-none px-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-red-100 focus:border-red-500 transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
             />
@@ -192,6 +239,13 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
           >
             <Download className="w-5 h-5" />
             <span>Exportar CSV</span>
+          </button>
+          <button
+            onClick={handleDailyUtilizationExport}
+            className="group relative w-full sm:w-auto justify-center flex items-center gap-2 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg"
+          >
+            <FileSpreadsheet className="w-5 h-5" />
+            <span>Utilização Diária Excel</span>
           </button>
           <button
             onClick={handlePrint}
@@ -408,6 +462,119 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
             ))}
           </div>
         </>
+      )}
+
+      {/* Card de Filtro de Veículos Cadastrados */}
+      <div className="glass card-shine rounded-2xl p-6 shadow-premium animate-fade-in">
+        <div className="flex items-center gap-3 pb-4 mb-6 border-b border-gray-200/50">
+          <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+            <Filter className="w-5 h-5 text-blue-600" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-gray-900">Filtrar Veículos Cadastrados</h3>
+            <p className="text-sm text-gray-600">Selecione uma data para visualizar os veículos cadastrados</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Data Inicial</label>
+            <input
+              type="date"
+              value={vehicleFilterStart}
+              onChange={(e) => setVehicleFilterStart(e.target.value)}
+              className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Data Final</label>
+            <input
+              type="date"
+              value={vehicleFilterEnd}
+              onChange={(e) => setVehicleFilterEnd(e.target.value)}
+              className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all bg-white text-gray-900 font-medium hover:border-gray-300"
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            onClick={() => {
+              setVehicleFilterStart('');
+              setVehicleFilterEnd('');
+            }}
+            className="flex-1 px-6 py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-all duration-200 shadow-sm"
+          >
+            Limpar Filtro
+          </button>
+          <button
+            onClick={() => loadVehiclesByDate()}
+            className="flex-1 px-6 py-3.5 gradient-primary text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+          >
+            <Filter className="w-5 h-5" />
+            <span>Confirmar Filtro</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Seção de Veículos da Gestão Cadastrados naquela Data */}
+      {filteredVehicles.length > 0 && (
+        <div className="glass rounded-2xl shadow-premium overflow-hidden animate-fade-in">
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200 px-6 py-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                <Plus className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Veículos Cadastrados</h3>
+                <p className="text-sm text-gray-600">
+                  {vehicleFilterStart === vehicleFilterEnd
+                    ? `Cadastrados em ${new Date(vehicleFilterStart + 'T00:00:00').toLocaleDateString('pt-BR')}`
+                    : `Cadastrados entre ${new Date(vehicleFilterStart + 'T00:00:00').toLocaleDateString('pt-BR')} e ${new Date(vehicleFilterEnd + 'T00:00:00').toLocaleDateString('pt-BR')}`
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 space-y-4">
+            {filteredVehicles.map((vehicle, index) => (
+              <div
+                key={vehicle.id}
+                className="flex items-start justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 hover:border-blue-300 transition-all duration-200 animate-fade-in"
+                style={{ animationDelay: `${index * 0.05}s` }}
+              >
+                <div className="flex items-start gap-4 flex-1">
+                  <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm flex-shrink-0">
+                    {vehicle.plate.substring(0, 2)}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <p className="font-bold text-gray-900 text-lg">{vehicle.plate}</p>
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                        vehicle.status === 'Ativo'
+                          ? 'bg-green-100 text-green-700'
+                          : vehicle.status === 'Inativo'
+                          ? 'bg-gray-100 text-gray-700'
+                          : 'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {vehicle.status}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-700 font-medium mb-1">{vehicle.name}</p>
+                    {vehicle.responsible_name && (
+                      <p className="text-sm text-gray-600">📋 {vehicle.responsible_name}</p>
+                    )}
+                    <p className="text-xs text-gray-500 mt-2">
+                      Cadastrado em {new Date(vehicle.created_at).toLocaleDateString('pt-BR')} às {new Date(vehicle.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       <RecordDetails

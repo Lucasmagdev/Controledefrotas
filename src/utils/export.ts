@@ -1,4 +1,4 @@
-import type { VehicleRecord } from '../types/database';
+import type { VehicleRecord, FleetVehicle } from '../types/database';
 
 export function exportToCSV(records: VehicleRecord[]) {
   const headers = [
@@ -42,6 +42,54 @@ export function exportToCSV(records: VehicleRecord[]) {
   link.setAttribute(
     'download',
     `controle-veiculos-${new Date().toISOString().split('T')[0]}.csv`
+  );
+  link.style.visibility = 'hidden';
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+export function exportDailyUtilizationExcel(records: VehicleRecord[], vehicles: FleetVehicle[] = []) {
+  // Preparar dados dos registros de uso
+  const recordHeaders = ['Placa', 'Status', 'Motorista (Uso)'];
+  const recordRows = records.map((record) => [
+    record.vehicle_plate,
+    record.status,
+    record.pickup_name,
+  ]);
+
+  // Preparar dados dos veículos cadastrados
+  const vehicleHeaders = ['Placa', 'Status', 'Motorista (Responsável)'];
+  const vehicleRows = vehicles.map((vehicle) => [
+    vehicle.plate,
+    vehicle.status,
+    vehicle.responsible_name || '-',
+  ]);
+
+  // Combinar headers
+  const headers = recordHeaders;
+  
+  // Combinar todos os dados
+  const allRows = [
+    ...recordRows,
+    ...vehicleRows,
+  ];
+
+  // Usar ponto-e-vírgula como separador (padrão Excel em regiões pt-BR)
+  const csvContent = [
+    headers.join(';'),
+    ...allRows.map((row) => row.map((cell) => `"${cell}"`).join(';')),
+  ].join('\n');
+
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+
+  link.setAttribute('href', url);
+  link.setAttribute(
+    'download',
+    `utilizacao-diaria-${new Date().toISOString().split('T')[0]}.csv`
   );
   link.style.visibility = 'hidden';
 

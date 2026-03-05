@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Truck, LogOut, LogIn, FileText, Save, RotateCcw } from 'lucide-react';
 import { Input } from './Input';
 import { Textarea } from './Textarea';
@@ -6,7 +6,7 @@ import { ChipSelect } from './ChipSelect';
 import { SignaturePad } from './SignaturePad';
 import { vehicleService } from '../services/vehicleService';
 import { vehicleCatalogService } from '../services/vehicleCatalogService';
-import type { VehicleRecordInput } from '../types/database';
+import type { VehicleRecordInput, FleetVehicle } from '../types/database';
 
 interface VehicleFormProps {
   onSuccess: () => void;
@@ -36,77 +36,32 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [validatingPlate, setValidatingPlate] = useState(false);
+  const [vehicles, setVehicles] = useState<FleetVehicle[]>([]);
+  const [loadingVehicles, setLoadingVehicles] = useState(true);
 
-  const normalizePlate = (plate: string) => {
-    return plate.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  };
-
-  const formatPlate = (plate: string) => {
-    const normalized = normalizePlate(plate);
-    if (normalized.length <= 3) return normalized;
-    if (normalized.length <= 7) {
-      return `${normalized.slice(0, 3)}-${normalized.slice(3)}`;
-    }
-    return `${normalized.slice(0, 3)}-${normalized.slice(3, 7)}`;
-  };
-async (value: string) => {
-    const formatted = formatPlate(value);
-    setFormData((prev) => ({ ...prev, vehicle_plate: formatted }));
-    
-    // Limpar erro anterior
-    if (errors.vehicle_plate) {
-      setErrors((prev) => ({ ...prev, vehicle_plate: '' }));
-    }
-
-    // Validar placa quasync (): Promise<boolean> => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.vehicle_plate.trim()) {
-      newErrors.vehicle_plate = 'Placa/veículo é obrigatório';
-    } else {
-      // Validar se veículo existe e está ativo
+  useEffect(() => {
+    const loadVehicles = async () => {
       try {
-        const vehicles = await vehicleCatalogService.listVehicles({ 
-          search: formData.vehicle_plate 
+        const activeVehicles = await vehicleCatalogService.listVehicles({ 
+          statusFilter: 'Ativo' 
         });
-        const foundVehicle = vehicles.find(v => v.plate === formData.vehicle_plate.toUpperCase());
-
-        if (!foundVehicle) {
-          newErrors.vehicle_plate = '🚫 Veículo não cadastrado. Cadastre-o na aba "Veículos"';
-        } else if (foundVehicle.status !== 'Ativo') {
-          newErrors.vehicle_plate = `⚠️ Veículo não está ativo (Status: ${foundVehicle.status})`;
-        }
+        setVehicles(activeVehicles);
       } catch (error) {
-        console.error('Erro ao validar placa:', error);
-      }les({ search: formatted });
-        const foundVehicle = vehicles.find(v => v.plate === formatted.toUpperCase());
-
-        if (!foundVehicle) {
-          setErrors((prev) => ({
-            ...prev,
-            vehicle_plate: '🚫 Veículo não cadastrado. Cadastre-o na aba "Veículos"',
-          }));
-        } else if (foundVehicle.status !== 'Ativo') {
-          setErrors((prev) => ({
-            ...prev,
-            vehicle_plate: `⚠️ Veículo não está ativo (Status: ${foundVehicle.status})`,
-          }));
-        }
-      } catch (error) {
-        console.error('Erro ao validar placa:', error);
+        console.error('Erro ao carregar veículos:', error);
+        setVehicles([]);
       } finally {
-        setValidatingPlate(false);
+        setLoadingVehicles(false);
       }
-      setErrors((prev) => ({ ...prev, vehicle_plate: '' }));
-    }
-  };
+    };
+
+    loadVehicles();
+  }, []);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.vehicle_plate.trim()) {
-      newErrors.vehicle_plate = 'Placa/veículo é obrigatório';
+      newErrors.vehicle_plate = 'Veículo é obrigatório';
     }
 
     if (!formData.reason.trim()) {
@@ -118,7 +73,7 @@ async (value: string) => {
     }
 
     if (!formData.pickup_date) {
-      new(await validateForm()_date = 'Data de retirada é obrigatória';
+      newErrors.pickup_date = 'Data de retirada é obrigatória';
     }
 
     if (!formData.pickup_time) {
@@ -244,14 +199,46 @@ async (value: string) => {
           </div>
         </div>
 
-        <Input
-          label="Placa/Veículo"
-          value={formData.vehicle_plate}
-          onChange={(e) => handlePlateChange(e.target.value)}
-          placeholder="ABC-1234 ou Nome/Modelo do Veículo"
-          required
-          error={errors.vehicle_plate}
-        />
+        <div>
+          <div className="flex items-center gap-3 mb-3">
+            <label className="block text-sm font-semibold text-gray-700">
+              Veículo <span className="text-red-500">*</span>
+            </label>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 border border-green-300">
+              <span className="flex w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+              <span className="text-xs font-semibold text-green-700">Apenas disponíveis</span>
+            </span>
+          </div>
+          {loadingVehicles ? (
+            <div className="flex items-center justify-center h-12 bg-gray-100 rounded-xl">
+              <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+            </div>
+          ) : vehicles.length === 0 ? (
+            <div className="h-12 px-4 py-3 rounded-xl bg-red-50 border-2 border-red-200 flex items-center">
+              <span className="text-red-600 text-sm font-medium">Nenhum veículo ativo disponível</span>
+            </div>
+          ) : (
+            <select
+              value={formData.vehicle_plate}
+              onChange={(e) => {
+                setFormData((prev) => ({ ...prev, vehicle_plate: e.target.value }));
+                if (errors.vehicle_plate) setErrors((prev) => ({ ...prev, vehicle_plate: '' }));
+              }}
+              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:outline-none transition-colors bg-white text-gray-900 font-medium"
+            >
+              <option value="">Selecione um veículo...</option>
+              {vehicles.map((vehicle) => (
+                <option key={vehicle.id} value={vehicle.plate}>
+                  {vehicle.plate} - {vehicle.name}
+                  {vehicle.responsible_name ? ` (${vehicle.responsible_name})` : ''}
+                </option>
+              ))}
+            </select>
+          )}
+          {errors.vehicle_plate && (
+            <p className="mt-2 text-sm text-red-600 font-medium">{errors.vehicle_plate}</p>
+          )}
+        </div>
 
         <ChipSelect
           label="Motivo"

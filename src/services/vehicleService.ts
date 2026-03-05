@@ -25,33 +25,62 @@ export const vehicleService = {
     startDate?: string;
     endDate?: string;
   }): Promise<VehicleRecord[]> {
+    // Primeiro, buscar TODOS os registros
     let query = supabase
       .from('vehicle_records')
       .select('*')
       .order('created_at', { ascending: false });
 
+    console.log('🔍 Filtrando registros com:', filters);
+
     if (filters?.search) {
       query = query.or(
         `vehicle_plate.ilike.%${filters.search}%,pickup_name.ilike.%${filters.search}%,return_name.ilike.%${filters.search}%`
       );
+      console.log('📝 Filtro de busca aplicado:', filters.search);
     }
 
     if (filters?.status && filters.status !== 'Todos') {
       query = query.eq('status', filters.status);
-    }
-
-    if (filters?.startDate) {
-      query = query.gte('pickup_date', filters.startDate);
-    }
-
-    if (filters?.endDate) {
-      query = query.lte('pickup_date', filters.endDate);
+      console.log('📊 Filtro de status aplicado:', filters.status);
     }
 
     const { data, error } = await query;
 
     if (error) throw error;
-    return data || [];
+
+    // Filtrar através de JavaScript (mais confiável que timestamps)
+    let filtered = data || [];
+
+    if (filters?.startDate || filters?.endDate) {
+      const startDate = filters?.startDate ? new Date(filters.startDate + 'T00:00:00') : null;
+      const endDate = filters?.endDate ? new Date(filters.endDate + 'T23:59:59') : null;
+
+      console.log('📅 Filtrando por data:', { startDate: filters?.startDate, endDate: filters?.endDate });
+
+      filtered = filtered.filter(record => {
+        // Extrair apenas a data do pickup_date (ignorar hora e timezone)
+        const recordDate = record.pickup_date.split('T')[0]; // "2026-03-04"
+        
+        let passStart = true;
+        let passEnd = true;
+
+        if (filters?.startDate) {
+          passStart = recordDate >= filters.startDate;
+          console.log(`  📌 ${record.vehicle_plate}: ${recordDate} >= ${filters.startDate} ? ${passStart}`);
+        }
+
+        if (filters?.endDate) {
+          passEnd = recordDate <= filters.endDate;
+          console.log(`  📌 ${record.vehicle_plate}: ${recordDate} <= ${filters.endDate} ? ${passEnd}`);
+        }
+
+        return passStart && passEnd;
+      });
+    }
+
+    console.log(`✅ ${filtered.length} registro(s) encontrado(s) após filtros`);
+    return filtered;
   },
 
   async getRecord(id: string): Promise<VehicleRecord | null> {
