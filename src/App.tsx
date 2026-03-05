@@ -127,7 +127,7 @@ function App() {
                 Novo Registro
               </h2>
               <p className="text-gray-600">
-                Preencha os dados de retirada e, opcionalmente, de devolução
+                Registre a retirada com assinatura. A devolucao e feita depois no mesmo registro.
               </p>
             </div>
             <VehicleForm

@@ -14,10 +14,13 @@ interface VehicleFormProps {
   editData?: VehicleRecordInput & { id?: string };
 }
 
-const REASON_SUGGESTIONS = ['Visita técnica', 'Entrega', 'Reunião', 'Manutenção', 'Outro'];
-const AUTHORIZATION_SUGGESTIONS = ['Gestor', 'Diretoria', 'RH', 'Coordenação', 'Outro'];
+const REASON_SUGGESTIONS = ['Visita tecnica', 'Entrega', 'Reuniao', 'Manutencao', 'Outro'];
+const AUTHORIZATION_SUGGESTIONS = ['Gestor', 'Diretoria', 'RH', 'Coordenacao', 'Outro'];
 
 export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) {
+  const isReturnMode = !!(editData?.id && editData?.status === 'Em uso' && editData?.pickup_signature);
+  const isNewPickup = !editData?.id;
+
   const [formData, setFormData] = useState<VehicleRecordInput>({
     vehicle_plate: editData?.vehicle_plate || '',
     reason: editData?.reason || '',
@@ -42,12 +45,12 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
   useEffect(() => {
     const loadVehicles = async () => {
       try {
-        const activeVehicles = await vehicleCatalogService.listVehicles({ 
-          statusFilter: 'Ativo' 
+        const activeVehicles = await vehicleCatalogService.listVehicles({
+          statusFilter: 'Ativo',
         });
         setVehicles(activeVehicles);
       } catch (error) {
-        console.error('Erro ao carregar veículos:', error);
+        console.error('Erro ao carregar veiculos:', error);
         setVehicles([]);
       } finally {
         setLoadingVehicles(false);
@@ -60,52 +63,40 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.vehicle_plate.trim()) {
-      newErrors.vehicle_plate = 'Veículo é obrigatório';
-    }
+    if (isNewPickup) {
+      if (!formData.vehicle_plate.trim()) newErrors.vehicle_plate = 'Veiculo e obrigatorio';
+      if (!formData.reason.trim()) newErrors.reason = 'Motivo e obrigatorio';
+      if (!formData.authorized_by.trim()) newErrors.authorized_by = 'Autorizacao e obrigatoria';
+      if (!formData.pickup_date) newErrors.pickup_date = 'Data de retirada e obrigatoria';
+      if (!formData.pickup_time) newErrors.pickup_time = 'Hora de retirada e obrigatoria';
+      if (!formData.pickup_name.trim()) newErrors.pickup_name = 'Nome de retirada e obrigatorio';
+      if (!formData.pickup_signature) newErrors.pickup_signature = 'Assinatura de retirada e obrigatoria';
+    } else if (isReturnMode) {
+      if (!formData.return_date) newErrors.return_date = 'Data de devolucao e obrigatoria';
+      if (!formData.return_time) newErrors.return_time = 'Hora de devolucao e obrigatoria';
+      if (!formData.return_name?.trim()) newErrors.return_name = 'Nome de quem devolveu e obrigatorio';
+      if (!formData.return_signature) newErrors.return_signature = 'Assinatura de devolucao e obrigatoria';
+    } else {
+      if (!formData.vehicle_plate.trim()) newErrors.vehicle_plate = 'Veiculo e obrigatorio';
+      if (!formData.reason.trim()) newErrors.reason = 'Motivo e obrigatorio';
+      if (!formData.authorized_by.trim()) newErrors.authorized_by = 'Autorizacao e obrigatoria';
+      if (!formData.pickup_date) newErrors.pickup_date = 'Data de retirada e obrigatoria';
+      if (!formData.pickup_time) newErrors.pickup_time = 'Hora de retirada e obrigatoria';
+      if (!formData.pickup_name.trim()) newErrors.pickup_name = 'Nome de retirada e obrigatorio';
+      if (!formData.pickup_signature) newErrors.pickup_signature = 'Assinatura de retirada e obrigatoria';
 
-    if (!formData.reason.trim()) {
-      newErrors.reason = 'Motivo é obrigatório';
-    }
+      const hasAnyReturnField = !!(
+        formData.return_date ||
+        formData.return_time ||
+        formData.return_name?.trim() ||
+        formData.return_signature
+      );
 
-    if (!formData.authorized_by.trim()) {
-      newErrors.authorized_by = 'Autorização é obrigatória';
-    }
-
-    if (!formData.pickup_date) {
-      newErrors.pickup_date = 'Data de retirada é obrigatória';
-    }
-
-    if (!formData.pickup_time) {
-      newErrors.pickup_time = 'Hora de retirada é obrigatória';
-    }
-
-    if (!formData.pickup_name.trim()) {
-      newErrors.pickup_name = 'Nome de retirada é obrigatório';
-    }
-
-    if (!formData.pickup_signature) {
-      newErrors.pickup_signature = 'Assinatura de retirada é obrigatória';
-    }
-
-    const hasReturnData =
-      formData.return_date ||
-      formData.return_time ||
-      formData.return_name ||
-      formData.return_signature;
-
-    if (hasReturnData) {
-      if (!formData.return_date) {
-        newErrors.return_date = 'Data de devolução é obrigatória quando há devolução';
-      }
-      if (!formData.return_time) {
-        newErrors.return_time = 'Hora de devolução é obrigatória quando há devolução';
-      }
-      if (!formData.return_name?.trim()) {
-        newErrors.return_name = 'Nome de devolução é obrigatório quando há devolução';
-      }
-      if (!formData.return_signature) {
-        newErrors.return_signature = 'Assinatura de devolução é obrigatória quando há devolução';
+      if (hasAnyReturnField) {
+        if (!formData.return_date) newErrors.return_date = 'Data de devolucao e obrigatoria';
+        if (!formData.return_time) newErrors.return_time = 'Hora de devolucao e obrigatoria';
+        if (!formData.return_name?.trim()) newErrors.return_name = 'Nome de quem devolveu e obrigatorio';
+        if (!formData.return_signature) newErrors.return_signature = 'Assinatura de devolucao e obrigatoria';
       }
     }
 
@@ -117,35 +108,52 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
     e.preventDefault();
 
     if (!validateForm()) {
-      onError('Por favor, preencha todos os campos obrigatórios');
+      onError(isReturnMode ? 'Por favor, preencha todos os dados da devolucao' : 'Por favor, preencha todos os campos obrigatorios');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const hasCompleteReturn =
+      const hasCompleteReturn = !!(
         formData.return_date &&
         formData.return_time &&
         formData.return_name &&
-        formData.return_signature;
+        formData.return_signature
+      );
 
-      const dataToSave: VehicleRecordInput = {
-        ...formData,
-        status: hasCompleteReturn ? 'Devolvido' : 'Em uso',
-        return_date: formData.return_date || undefined,
-        return_time: formData.return_time || undefined,
-        return_name: formData.return_name || undefined,
-        return_signature: formData.return_signature || undefined,
-      };
+      const status = isReturnMode
+        ? 'Devolvido'
+        : isNewPickup
+          ? 'Em uso'
+          : hasCompleteReturn
+            ? 'Devolvido'
+            : 'Em uso';
 
-      console.log('📤 Enviando para Supabase:', {
-        veiculo: dataToSave.vehicle_plate,
-        pickup_signature_length: dataToSave.pickup_signature?.length || 0,
-        return_signature_length: dataToSave.return_signature?.length || 0,
-        tem_pickup_sig: !!dataToSave.pickup_signature,
-        tem_return_sig: !!dataToSave.return_signature,
-      });
+      const dataToSave = isReturnMode
+        ? {
+            return_date: formData.return_date,
+            return_time: formData.return_time,
+            return_name: formData.return_name,
+            return_signature: formData.return_signature,
+            observations: formData.observations,
+            status,
+          }
+        : {
+            vehicle_plate: formData.vehicle_plate,
+            reason: formData.reason,
+            authorized_by: formData.authorized_by,
+            pickup_date: formData.pickup_date,
+            pickup_time: formData.pickup_time,
+            pickup_name: formData.pickup_name,
+            pickup_signature: formData.pickup_signature,
+            return_date: isNewPickup ? undefined : formData.return_date || undefined,
+            return_time: isNewPickup ? undefined : formData.return_time || undefined,
+            return_name: isNewPickup ? undefined : formData.return_name || undefined,
+            return_signature: isNewPickup ? undefined : formData.return_signature || undefined,
+            observations: formData.observations,
+            status,
+          };
 
       if (editData?.id) {
         await vehicleService.updateRecord(editData.id, dataToSave);
@@ -153,9 +161,11 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
         await vehicleService.createRecord(dataToSave);
       }
 
-      console.log('✅ Registro salvo com sucesso!');
       onSuccess();
-      handleClear();
+
+      if (isNewPickup) {
+        handleClear();
+      }
     } catch (error) {
       console.error('Error saving record:', error);
       onError('Erro ao salvar registro. Tente novamente.');
@@ -185,100 +195,151 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
-      {/* Card de Informações do Veículo */}
-      <div className="glass card-shine rounded-2xl p-6 sm:p-8 space-y-6 shadow-premium animate-fade-in">
-        <div className="flex items-center gap-3 pb-4 border-b border-gray-200/50">
-          <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
-            <Truck className="w-5 h-5 text-blue-600" />
+      {isReturnMode && (
+        <div className="glass card-shine rounded-2xl p-6 sm:p-8 bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 animate-fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center flex-shrink-0">
+              <LogIn className="w-6 h-6 text-purple-600" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-xl font-bold text-gray-900">Registrar Devolucao</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Veiculo: <span className="font-semibold text-purple-700">{formData.vehicle_plate}</span> ·
+                Retirado por: <span className="font-semibold text-purple-700">{formData.pickup_name}</span>
+              </p>
+            </div>
           </div>
+        </div>
+      )}
+
+      {isNewPickup && (
+        <div className="glass card-shine rounded-2xl p-6 sm:p-8 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 animate-fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0">
+              <LogOut className="w-6 h-6 text-green-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Registrar Retirada de Veiculo</h2>
+              <p className="text-sm text-gray-600 mt-1">Preencha os dados da retirada e assine</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!isReturnMode && !isNewPickup && (
+        <div className="glass card-shine rounded-2xl p-6 sm:p-8 bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-200 animate-fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+              <FileText className="w-6 h-6 text-blue-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Editar Registro</h2>
+              <p className="text-sm text-gray-600 mt-1">Atualize os dados conforme necessario</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!isReturnMode && (
+        <div className="glass card-shine rounded-2xl p-6 sm:p-8 space-y-6 shadow-premium animate-fade-in">
+          <div className="flex items-center gap-3 pb-4 border-b border-gray-200/50">
+            <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+              <Truck className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">Informacoes do Veiculo</h3>
+              <p className="text-sm text-gray-500">Dados basicos do veiculo</p>
+            </div>
+          </div>
+
           <div>
-            <h3 className="text-xl font-bold text-gray-900">
-              Informações do Veículo
-            </h3>
-            <p className="text-sm text-gray-500">Dados básicos do veículo</p>
-          </div>
-        </div>
-
-        <div>
-          <div className="flex items-center gap-3 mb-3">
-            <label className="block text-sm font-semibold text-gray-700">
-              Veículo <span className="text-red-500">*</span>
-            </label>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 border border-green-300">
-              <span className="flex w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-              <span className="text-xs font-semibold text-green-700">Apenas disponíveis</span>
-            </span>
-          </div>
-          {loadingVehicles ? (
-            <div className="flex items-center justify-center h-12 bg-gray-100 rounded-xl">
-              <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+            <div className="flex items-center gap-3 mb-3">
+              <label className="block text-sm font-semibold text-gray-700">
+                Veiculo <span className="text-red-500">*</span>
+              </label>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 border border-green-300">
+                <span className="flex w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                <span className="text-xs font-semibold text-green-700">Apenas disponiveis</span>
+              </span>
             </div>
-          ) : vehicles.length === 0 ? (
-            <div className="h-12 px-4 py-3 rounded-xl bg-red-50 border-2 border-red-200 flex items-center">
-              <span className="text-red-600 text-sm font-medium">Nenhum veículo ativo disponível</span>
-            </div>
-          ) : (
-            <select
-              value={formData.vehicle_plate}
-              onChange={(e) => {
-                setFormData((prev) => ({ ...prev, vehicle_plate: e.target.value }));
-                if (errors.vehicle_plate) setErrors((prev) => ({ ...prev, vehicle_plate: '' }));
-              }}
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:outline-none transition-colors bg-white text-gray-900 font-medium"
-            >
-              <option value="">Selecione um veículo...</option>
-              {vehicles.map((vehicle) => (
-                <option key={vehicle.id} value={vehicle.plate}>
-                  {vehicle.plate} - {vehicle.name}
-                  {vehicle.responsible_name ? ` (${vehicle.responsible_name})` : ''}
-                </option>
-              ))}
-            </select>
-          )}
-          {errors.vehicle_plate && (
-            <p className="mt-2 text-sm text-red-600 font-medium">{errors.vehicle_plate}</p>
-          )}
+            {loadingVehicles ? (
+              <div className="flex items-center justify-center h-12 bg-gray-100 rounded-xl">
+                <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+              </div>
+            ) : vehicles.length === 0 ? (
+              <div className="h-12 px-4 py-3 rounded-xl bg-red-50 border-2 border-red-200 flex items-center">
+                <span className="text-red-600 text-sm font-medium">Nenhum veiculo ativo disponivel</span>
+              </div>
+            ) : (
+              <select
+                value={formData.vehicle_plate}
+                onChange={(e) => {
+                  setFormData((prev) => ({ ...prev, vehicle_plate: e.target.value }));
+                  if (errors.vehicle_plate) setErrors((prev) => ({ ...prev, vehicle_plate: '' }));
+                }}
+                disabled={isReturnMode}
+                className={`w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:outline-none transition-colors bg-white text-gray-900 font-medium ${
+                  isReturnMode ? 'opacity-60 cursor-not-allowed' : ''
+                }`}
+              >
+                <option value="">Selecione um veiculo...</option>
+                {vehicles.map((vehicle) => (
+                  <option key={vehicle.id} value={vehicle.plate}>
+                    {vehicle.plate} - {vehicle.name}
+                    {vehicle.responsible_name ? ` (${vehicle.responsible_name})` : ''}
+                  </option>
+                ))}
+              </select>
+            )}
+            {errors.vehicle_plate && <p className="mt-2 text-sm text-red-600 font-medium">{errors.vehicle_plate}</p>}
+          </div>
+
+          <ChipSelect
+            label="Motivo"
+            value={formData.reason}
+            onChange={(value) => {
+              setFormData((prev) => ({ ...prev, reason: value }));
+              if (errors.reason) setErrors((prev) => ({ ...prev, reason: '' }));
+            }}
+            suggestions={REASON_SUGGESTIONS}
+            placeholder="Digite ou selecione o motivo"
+            required
+            error={errors.reason}
+            disabled={isReturnMode}
+          />
+
+          <ChipSelect
+            label="Autorizacao"
+            value={formData.authorized_by}
+            onChange={(value) => {
+              setFormData((prev) => ({ ...prev, authorized_by: value }));
+              if (errors.authorized_by) setErrors((prev) => ({ ...prev, authorized_by: '' }));
+            }}
+            suggestions={AUTHORIZATION_SUGGESTIONS}
+            placeholder="Digite ou selecione quem autorizou"
+            required
+            error={errors.authorized_by}
+            disabled={isReturnMode}
+          />
         </div>
+      )}
 
-        <ChipSelect
-          label="Motivo"
-          value={formData.reason}
-          onChange={(value) => {
-            setFormData((prev) => ({ ...prev, reason: value }));
-            if (errors.reason) setErrors((prev) => ({ ...prev, reason: '' }));
-          }}
-          suggestions={REASON_SUGGESTIONS}
-          placeholder="Digite ou selecione o motivo"
-          required
-          error={errors.reason}
-        />
-
-        <ChipSelect
-          label="Autorização"
-          value={formData.authorized_by}
-          onChange={(value) => {
-            setFormData((prev) => ({ ...prev, authorized_by: value }));
-            if (errors.authorized_by) setErrors((prev) => ({ ...prev, authorized_by: '' }));
-          }}
-          suggestions={AUTHORIZATION_SUGGESTIONS}
-          placeholder="Digite ou selecione quem autorizou"
-          required
-          error={errors.authorized_by}
-        />
-      </div>
-
-      {/* Card de Retirada */}
-      <div className="glass card-shine rounded-2xl p-6 sm:p-8 space-y-6 shadow-premium animate-fade-in" style={{ animationDelay: '0.1s' }}>
+      <div className={`glass card-shine rounded-2xl p-6 sm:p-8 space-y-6 shadow-premium animate-fade-in ${
+        isReturnMode ? 'opacity-60 bg-gray-50' : ''
+      }`} style={{ animationDelay: '0.1s' }}>
         <div className="flex items-center gap-3 pb-4 border-b border-gray-200/50">
           <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
             <LogOut className="w-5 h-5 text-green-600" />
           </div>
-          <div>
-            <h3 className="text-xl font-bold text-gray-900">
-              Retirada
-            </h3>
-            <p className="text-sm text-gray-500">Informações de quem retirou</p>
+          <div className="flex-1">
+            <h3 className="text-xl font-bold text-gray-900">Retirada</h3>
+            <p className="text-sm text-gray-500">Informacoes de quem retirou</p>
           </div>
+          {isReturnMode && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-200 border border-gray-300">
+              <span className="text-xs font-semibold text-gray-600">Somente leitura</span>
+            </span>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -290,6 +351,7 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
               setFormData((prev) => ({ ...prev, pickup_date: e.target.value }));
               if (errors.pickup_date) setErrors((prev) => ({ ...prev, pickup_date: '' }));
             }}
+            disabled={isReturnMode}
             required
             error={errors.pickup_date}
           />
@@ -302,6 +364,7 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
               setFormData((prev) => ({ ...prev, pickup_time: e.target.value }));
               if (errors.pickup_time) setErrors((prev) => ({ ...prev, pickup_time: '' }));
             }}
+            disabled={isReturnMode}
             required
             error={errors.pickup_time}
           />
@@ -314,6 +377,7 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
             setFormData((prev) => ({ ...prev, pickup_name: e.target.value }));
             if (errors.pickup_name) setErrors((prev) => ({ ...prev, pickup_name: '' }));
           }}
+          disabled={isReturnMode}
           placeholder="Nome completo de quem retirou"
           required
           error={errors.pickup_name}
@@ -326,94 +390,110 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
             setFormData((prev) => ({ ...prev, pickup_signature: signature }));
             if (errors.pickup_signature) setErrors((prev) => ({ ...prev, pickup_signature: '' }));
           }}
+          disabled={isReturnMode}
           required
           error={errors.pickup_signature}
         />
       </div>
 
-      {/* Card de Devolução */}
-      <div className="glass card-shine rounded-2xl p-6 sm:p-8 space-y-6 shadow-premium animate-fade-in" style={{ animationDelay: '0.2s' }}>
-        <div className="flex items-center gap-3 pb-4 border-b border-gray-200/50">
-          <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
-            <LogIn className="w-5 h-5 text-purple-600" />
-          </div>
-          <div>
-            <h3 className="text-xl font-bold text-gray-900">
-              Devolução
-            </h3>
-            <p className="text-sm text-gray-500">Opcional - preencha ao devolver</p>
-          </div>
+      {isReturnMode && (
+        <div className="glass rounded-2xl p-6 bg-gray-50 border border-gray-200 shadow-sm -mt-3">
+          <p className="text-sm text-gray-600">
+            Os dados da retirada estao travados para manter o historico. Preencha abaixo apenas a devolucao.
+          </p>
         </div>
+      )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {!isNewPickup && (
+        <div className="glass card-shine rounded-2xl p-6 sm:p-8 space-y-6 shadow-premium animate-fade-in" style={{ animationDelay: isReturnMode ? '0.1s' : '0.2s' }}>
+          <div className="flex items-center gap-3 pb-4 border-b border-gray-200/50">
+            <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
+              <LogIn className="w-5 h-5 text-purple-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold text-gray-900">Devolucao</h3>
+              <p className="text-sm text-gray-500">
+                {isReturnMode ? 'Registre os dados de devolucao' : 'Atualize os dados de devolucao, se necessario'}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Input
+              label="Data"
+              type="date"
+              value={formData.return_date || ''}
+              onChange={(e) => {
+                setFormData((prev) => ({ ...prev, return_date: e.target.value }));
+                if (errors.return_date) setErrors((prev) => ({ ...prev, return_date: '' }));
+              }}
+              required={isReturnMode}
+              error={errors.return_date}
+            />
+
+            <Input
+              label="Hora"
+              type="time"
+              value={formData.return_time || ''}
+              onChange={(e) => {
+                setFormData((prev) => ({ ...prev, return_time: e.target.value }));
+                if (errors.return_time) setErrors((prev) => ({ ...prev, return_time: '' }));
+              }}
+              required={isReturnMode}
+              error={errors.return_time}
+            />
+          </div>
+
           <Input
-            label="Data"
-            type="date"
-            value={formData.return_date || ''}
+            label="Nome"
+            value={formData.return_name || ''}
             onChange={(e) => {
-              setFormData((prev) => ({ ...prev, return_date: e.target.value }));
-              if (errors.return_date) setErrors((prev) => ({ ...prev, return_date: '' }));
+              setFormData((prev) => ({ ...prev, return_name: e.target.value }));
+              if (errors.return_name) setErrors((prev) => ({ ...prev, return_name: '' }));
             }}
-            error={errors.return_date}
+            placeholder="Nome completo de quem devolveu"
+            required={isReturnMode}
+            error={errors.return_name}
           />
 
-          <Input
-            label="Hora"
-            type="time"
-            value={formData.return_time || ''}
-            onChange={(e) => {
-              setFormData((prev) => ({ ...prev, return_time: e.target.value }));
-              if (errors.return_time) setErrors((prev) => ({ ...prev, return_time: '' }));
+          <SignaturePad
+            label="Assinatura"
+            value={formData.return_signature || ''}
+            onChange={(signature) => {
+              setFormData((prev) => ({ ...prev, return_signature: signature }));
+              if (errors.return_signature) setErrors((prev) => ({ ...prev, return_signature: '' }));
             }}
-            error={errors.return_time}
+            required={isReturnMode}
+            error={errors.return_signature}
           />
         </div>
+      )}
 
-        <Input
-          label="Nome"
-          value={formData.return_name || ''}
-          onChange={(e) => {
-            setFormData((prev) => ({ ...prev, return_name: e.target.value }));
-            if (errors.return_name) setErrors((prev) => ({ ...prev, return_name: '' }));
-          }}
-          placeholder="Nome completo de quem devolveu"
-          error={errors.return_name}
-        />
+      {!isReturnMode && (
+        <div className="glass card-shine rounded-2xl p-6 sm:p-8 shadow-premium animate-fade-in" style={{ animationDelay: '0.3s' }}>
+          <Textarea
+            label="Observacoes"
+            value={formData.observations || ''}
+            onChange={(e) => setFormData((prev) => ({ ...prev, observations: e.target.value }))}
+            placeholder="Informacoes adicionais (opcional)"
+            rows={4}
+            maxLength={500}
+          />
+        </div>
+      )}
 
-        <SignaturePad
-          label="Assinatura"
-          value={formData.return_signature || ''}
-          onChange={(signature) => {
-            setFormData((prev) => ({ ...prev, return_signature: signature }));
-            if (errors.return_signature) setErrors((prev) => ({ ...prev, return_signature: '' }));
-          }}
-          error={errors.return_signature}
-        />
-      </div>
-
-      {/* Card de Observações */}
-      <div className="glass card-shine rounded-2xl p-6 sm:p-8 shadow-premium animate-fade-in" style={{ animationDelay: '0.3s' }}>
-        <Textarea
-          label="Observações"
-          value={formData.observations || ''}
-          onChange={(e) => setFormData((prev) => ({ ...prev, observations: e.target.value }))}
-          placeholder="Informações adicionais (opcional)"
-          rows={4}
-          maxLength={500}
-        />
-      </div>
-
-      {/* Botões de Ação */}
-      <div className="flex flex-col-reverse sm:flex-row gap-4 sm:justify-end animate-fade-in" style={{ animationDelay: '0.4s' }}>
-        <button
-          type="button"
-          onClick={handleClear}
-          className="group relative w-full sm:w-auto px-8 py-3.5 bg-white border-2 border-gray-300 hover:border-gray-400 text-gray-700 font-semibold rounded-xl transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center gap-2"
-          disabled={isSubmitting}
-        >
-          <RotateCcw className="w-5 h-5" />
-          <span>Limpar Formulário</span>
-        </button>
+      <div className="flex flex-col-reverse sm:flex-row gap-4 sm:justify-end animate-fade-in" style={{ animationDelay: isReturnMode ? '0.2s' : '0.4s' }}>
+        {isNewPickup && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="group relative w-full sm:w-auto px-8 py-3.5 bg-white border-2 border-gray-300 hover:border-gray-400 text-gray-700 font-semibold rounded-xl transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center gap-2"
+            disabled={isSubmitting}
+          >
+            <RotateCcw className="w-5 h-5" />
+            <span>Limpar Formulario</span>
+          </button>
+        )}
         <button
           type="submit"
           className="group relative w-full sm:w-auto px-8 py-3.5 gradient-primary text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -422,12 +502,18 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
           {isSubmitting ? (
             <>
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              <span>Salvando...</span>
+              <span>{isReturnMode ? 'Registrando devolucao...' : 'Salvando...'}</span>
             </>
           ) : (
             <>
               <Save className="w-5 h-5" />
-              <span>{editData?.id ? 'Atualizar Registro' : 'Salvar Registro'}</span>
+              <span>
+                {isReturnMode
+                  ? 'Confirmar Devolucao'
+                  : editData?.id
+                    ? 'Atualizar Registro'
+                    : 'Salvar Retirada'}
+              </span>
             </>
           )}
         </button>

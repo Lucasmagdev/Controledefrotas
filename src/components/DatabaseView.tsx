@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, Download, Printer, Eye, Edit2, Trash2, BarChart3, TrendingUp, CheckCircle2, Plus, FileSpreadsheet } from 'lucide-react';
+import { Search, Filter, Download, Printer, Eye, Edit2, Trash2, BarChart3, TrendingUp, CheckCircle2, Plus, FileSpreadsheet, LogIn } from 'lucide-react';
 import { vehicleService } from '../services/vehicleService';
 import { vehicleCatalogService } from '../services/vehicleCatalogService';
 import { RecordDetails } from './RecordDetails';
@@ -363,13 +363,24 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
                           >
                             <Eye className="w-4 h-4" />
                           </button>
-                          <button
-                            onClick={() => handleEdit(record)}
-                            className="p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
-                            title="Editar"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
+                          {record.status === 'Em uso' ? (
+                            <button
+                              onClick={() => handleEdit(record)}
+                              className="group px-3 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold transition-all duration-200 flex items-center gap-1.5 hover:shadow-md"
+                              title="Registrar devolução"
+                            >
+                              <LogIn className="w-4 h-4" />
+                              <span>Devolução</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleEdit(record)}
+                              className="p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
+                              title="Editar"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                          )}
                           <button
                             onClick={() => setDeleteConfirm(record.id)}
                             className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
@@ -443,13 +454,23 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
                     <Eye className="w-5 h-5" />
                     Ver
                   </button>
-                  <button
-                    onClick={() => handleEdit(record)}
-                    className="flex flex-col items-center gap-1.5 px-3 py-3 bg-green-50 text-green-600 rounded-xl font-semibold text-xs hover:bg-green-100 transition-colors"
-                  >
-                    <Edit2 className="w-5 h-5" />
-                    Editar
-                  </button>
+                  {record.status === 'Em uso' ? (
+                    <button
+                      onClick={() => handleEdit(record)}
+                      className="flex flex-col items-center gap-1.5 px-3 py-3 bg-purple-600 text-white rounded-xl font-semibold text-xs hover:bg-purple-700 transition-colors col-span-1"
+                    >
+                      <LogIn className="w-5 h-5" />
+                      Devol.
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleEdit(record)}
+                      className="flex flex-col items-center gap-1.5 px-3 py-3 bg-green-50 text-green-600 rounded-xl font-semibold text-xs hover:bg-green-100 transition-colors"
+                    >
+                      <Edit2 className="w-5 h-5" />
+                      Editar
+                    </button>
+                  )}
                   <button
                     onClick={() => setDeleteConfirm(record.id)}
                     className="flex flex-col items-center gap-1.5 px-3 py-3 bg-red-50 text-red-600 rounded-xl font-semibold text-xs hover:bg-red-100 transition-colors"
@@ -592,7 +613,7 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
           setIsEditOpen(false);
           setRecordToEdit(null);
         }}
-        title="Editar Registro"
+        title={recordToEdit?.status === 'Em uso' ? 'Registrar Devolucao' : 'Editar Registro'}
         size="xl"
       >
         <VehicleForm
