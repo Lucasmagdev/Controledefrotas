@@ -23,6 +23,7 @@ export interface FleetVehicle {
   id: string;
   plate: string;
   name: string;
+  responsible_name: string;
   status: VehicleStatus;
   created_at: string;
   updated_at: string;
@@ -31,6 +32,7 @@ export interface FleetVehicle {
 export interface FleetVehicleInput {
   plate: string;
   name: string;
+  responsible_name: string;
   status: VehicleStatus;
 }
 
@@ -59,6 +61,7 @@ export interface Database {
           id?: string;
           plate: string;
           name: string;
+          responsible_name?: string;
           status: VehicleStatus;
           created_at?: string;
           updated_at?: string;
@@ -66,6 +69,7 @@ export interface Database {
         Update: {
           plate?: string;
           name?: string;
+          responsible_name?: string;
           status?: VehicleStatus;
           updated_at?: string;
         };

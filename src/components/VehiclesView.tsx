@@ -14,6 +14,7 @@ const STATUS_OPTIONS: VehicleStatus[] = ['Ativo', 'Inativo', 'Em Manut.'];
 const INITIAL_FORM: FleetVehicleInput = {
   plate: '',
   name: '',
+  responsible_name: '',
   status: 'Ativo',
 };
 
@@ -115,6 +116,7 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
     setFormData({
       plate: vehicle.plate,
       name: vehicle.name,
+      responsible_name: vehicle.responsible_name,
       status: vehicle.status,
     });
     setErrors({});
@@ -212,6 +214,13 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
               required
             />
 
+            <Input
+              label="Responsável/Motorista"
+              placeholder="Ex: João Silva"
+              value={formData.responsible_name}
+              onChange={(event) => setFormData((prev) => ({ ...prev, responsible_name: event.target.value }))}
+            />
+
             <div className="space-y-2">
               <label className="text-sm font-semibold text-gray-700">Status</label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -294,6 +303,9 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
                 <div key={vehicle.id} className="bg-white rounded-2xl border border-gray-200 p-4 hover:shadow-premium transition-all">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div>
+                      {vehicle.responsible_name && (
+                        <p className="text-sm text-gray-500 mt-1">📋 {vehicle.responsible_name}</p>
+                      )}
                       <div className="flex items-center gap-2 mb-1">
                         <h4 className="text-lg font-bold text-gray-900">{vehicle.plate}</h4>
                         <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${statusStyle(vehicle.status)}`}>

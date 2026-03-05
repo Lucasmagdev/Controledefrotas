@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS public.vehicles (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   plate text NOT NULL,
   name text NOT NULL,
+  responsible_name text DEFAULT '',
   status text NOT NULL DEFAULT 'Ativo'
     CHECK (status IN ('Ativo', 'Inativo', 'Em Manut.')),
   created_at timestamptz DEFAULT now(),
