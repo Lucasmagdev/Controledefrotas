@@ -5,6 +5,7 @@ import { Textarea } from './Textarea';
 import { ChipSelect } from './ChipSelect';
 import { SignaturePad } from './SignaturePad';
 import { vehicleService } from '../services/vehicleService';
+import { vehicleCatalogService } from '../services/vehicleCatalogService';
 import type { VehicleRecordInput } from '../types/database';
 
 interface VehicleFormProps {
@@ -35,6 +36,7 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validatingPlate, setValidatingPlate] = useState(false);
 
   const normalizePlate = (plate: string) => {
     return plate.toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -48,11 +50,54 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
     }
     return `${normalized.slice(0, 3)}-${normalized.slice(3, 7)}`;
   };
-
-  const handlePlateChange = (value: string) => {
+async (value: string) => {
     const formatted = formatPlate(value);
     setFormData((prev) => ({ ...prev, vehicle_plate: formatted }));
+    
+    // Limpar erro anterior
     if (errors.vehicle_plate) {
+      setErrors((prev) => ({ ...prev, vehicle_plate: '' }));
+    }
+
+    // Validar placa quasync (): Promise<boolean> => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.vehicle_plate.trim()) {
+      newErrors.vehicle_plate = 'Placa/veículo é obrigatório';
+    } else {
+      // Validar se veículo existe e está ativo
+      try {
+        const vehicles = await vehicleCatalogService.listVehicles({ 
+          search: formData.vehicle_plate 
+        });
+        const foundVehicle = vehicles.find(v => v.plate === formData.vehicle_plate.toUpperCase());
+
+        if (!foundVehicle) {
+          newErrors.vehicle_plate = '🚫 Veículo não cadastrado. Cadastre-o na aba "Veículos"';
+        } else if (foundVehicle.status !== 'Ativo') {
+          newErrors.vehicle_plate = `⚠️ Veículo não está ativo (Status: ${foundVehicle.status})`;
+        }
+      } catch (error) {
+        console.error('Erro ao validar placa:', error);
+      }les({ search: formatted });
+        const foundVehicle = vehicles.find(v => v.plate === formatted.toUpperCase());
+
+        if (!foundVehicle) {
+          setErrors((prev) => ({
+            ...prev,
+            vehicle_plate: '🚫 Veículo não cadastrado. Cadastre-o na aba "Veículos"',
+          }));
+        } else if (foundVehicle.status !== 'Ativo') {
+          setErrors((prev) => ({
+            ...prev,
+            vehicle_plate: `⚠️ Veículo não está ativo (Status: ${foundVehicle.status})`,
+          }));
+        }
+      } catch (error) {
+        console.error('Erro ao validar placa:', error);
+      } finally {
+        setValidatingPlate(false);
+      }
       setErrors((prev) => ({ ...prev, vehicle_plate: '' }));
     }
   };
@@ -73,7 +118,7 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
     }
 
     if (!formData.pickup_date) {
-      newErrors.pickup_date = 'Data de retirada é obrigatória';
+      new(await validateForm()_date = 'Data de retirada é obrigatória';
     }
 
     if (!formData.pickup_time) {
