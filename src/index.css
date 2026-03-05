@@ -7,13 +7,153 @@
     @apply transition-colors duration-200;
   }
   
+  html {
+    scroll-behavior: smooth;
+  }
+  
   body {
     @apply antialiased;
     font-feature-settings: "kern";
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e8eef7 100%);
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Fundo 3D com elementos minimalistas - Personalizado */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+      radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.12) 0%, transparent 50%),
+      radial-gradient(circle at 50% 0%, rgba(236, 72, 153, 0.1) 0%, transparent 40%),
+      radial-gradient(circle at 100% 50%, rgba(34, 197, 94, 0.08) 0%, transparent 60%),
+      radial-gradient(circle at 0% 100%, rgba(249, 115, 22, 0.07) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+    animation: background-shift 20s ease-in-out infinite;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    top: -50%;
+    right: -10%;
+    width: 800px;
+    height: 800px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
+    border-radius: 50%;
+    animation: float 8s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  #root {
+    position: relative;
+    z-index: 1;
   }
 }
 
 @layer utilities {
+  /* Animações avançadas */
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px) translateX(0px);
+    }
+    33% {
+      transform: translateY(-40px) translateX(20px);
+    }
+    66% {
+      transform: translateY(-20px) translateX(-30px);
+    }
+  }
+
+  @keyframes float-slow {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-20px);
+    }
+  }
+
+  @keyframes rotate-slow {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 40px rgba(59, 130, 246, 0.5);
+    }
+  }
+
+  @keyframes background-shift {
+    0%, 100% {
+      filter: brightness(1) saturate(1);
+    }
+    50% {
+      filter: brightness(1.05) saturate(1.1);
+    }
+  }
+
+  @keyframes sway {
+    0%, 100% {
+      transform: translateX(0px) translateY(0px);
+    }
+    33% {
+      transform: translateX(30px) translateY(-20px);
+    }
+    66% {
+      transform: translateX(-30px) translateY(20px);
+    }
+  }
+
+  @keyframes orbit {
+    0% {
+      transform: rotate(0deg) translateX(150px) rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg) translateX(150px) rotate(-360deg);
+    }
+  }
+
+  @keyframes shimmer {
+    0%, 100% {
+      opacity: 0.4;
+    }
+    50% {
+      opacity: 0.8;
+    }
+  }
+
+  .animate-float {
+    animation: float-slow 4s ease-in-out infinite;
+  }
+
+  .animate-float-slow {
+    animation: float 8s ease-in-out infinite;
+  }
+
+  .animate-rotate-slow {
+    animation: rotate-slow 20s linear infinite;
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+
   /* Animações de entrada */
   .animate-fade-in {
     animation: fadeIn 0.4s ease-out;
@@ -38,7 +178,7 @@
   /* Efeito Glassmorphism Simplificado */
   .glass {
     @apply bg-white/95 backdrop-blur-md border border-gray-200/50;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 0 1px rgba(59, 130, 246, 0.1);
   }
 
   .glass-dark {
@@ -187,5 +327,101 @@
   /* Safe Area para dispositivos com notch */
   .safe-area-inset-bottom {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* 3D Decorative Elements */
+  .decoration-sphere {
+    position: fixed;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .decoration-sphere-1 {
+    width: 300px;
+    height: 300px;
+    top: -100px;
+    right: -50px;
+    background: radial-gradient(circle at 30% 30%, rgba(99, 102, 241, 0.2), transparent 70%);
+  }
+
+  .decoration-sphere-2 {
+    width: 400px;
+    height: 400px;
+    bottom: -150px;
+    left: -100px;
+    background: radial-gradient(circle at 30% 30%, rgba(139, 92, 246, 0.15), transparent 70%);
+    animation: float-slow 15s ease-in-out infinite;
+  }
+
+  .decoration-sphere-3 {
+    width: 200px;
+    height: 200px;
+    top: 50%;
+    left: 10%;
+    background: radial-gradient(circle at 30% 30%, rgba(236, 72, 153, 0.1), transparent 70%);
+    animation: float-slow 20s ease-in-out infinite reverse;
+  }
+
+  .decoration-sphere-4 {
+    width: 350px;
+    height: 350px;
+    bottom: 10%;
+    right: 5%;
+    background: radial-gradient(circle at 30% 30%, rgba(34, 197, 94, 0.12), transparent 70%);
+    animation: sway 18s ease-in-out infinite;
+  }
+
+  .decoration-sphere-5 {
+    width: 250px;
+    height: 250px;
+    top: 30%;
+    right: 12%;
+    background: radial-gradient(circle at 30% 30%, rgba(249, 115, 22, 0.1), transparent 70%);
+    animation: float-slow 22s ease-in-out infinite;
+  }
+
+  .decoration-sphere-6 {
+    width: 180px;
+    height: 180px;
+    top: 70%;
+    left: 50%;
+    background: radial-gradient(circle at 30% 30%, rgba(168, 85, 247, 0.11), transparent 70%);
+    animation: orbit 25s linear infinite;
+  }
+
+  /* Elementos decorativos adicionais */
+  .decoration-accent {
+    position: fixed;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .decoration-accent-1 {
+    width: 120px;
+    height: 120px;
+    top: 15%;
+    left: 5%;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.15), transparent 80%);
+    animation: shimmer 4s ease-in-out infinite;
+  }
+
+  .decoration-accent-2 {
+    width: 90px;
+    height: 90px;
+    bottom: 25%;
+    right: 8%;
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.12), transparent 80%);
+    animation: float-slow 12s ease-in-out infinite reverse;
+  }
+
+  .decoration-accent-3 {
+    width: 110px;
+    height: 110px;
+    top: 40%;
+    right: 20%;
+    background: radial-gradient(circle, rgba(236, 72, 153, 0.1), transparent 80%);
+    animation: sway 16s ease-in-out infinite reverse;
   }
 }

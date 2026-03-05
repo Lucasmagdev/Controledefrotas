@@ -80,6 +80,19 @@ function App() {
 
   return (
     <div className="min-h-screen gradient-mesh pb-20">
+      {/* Decorative 3D Spheres - Vibrant & Dynamic */}
+      <div className="decoration-sphere decoration-sphere-1" />
+      <div className="decoration-sphere decoration-sphere-2" />
+      <div className="decoration-sphere decoration-sphere-3" />
+      <div className="decoration-sphere decoration-sphere-4" />
+      <div className="decoration-sphere decoration-sphere-5" />
+      <div className="decoration-sphere decoration-sphere-6" />
+      
+      {/* Decorative Accent Elements */}
+      <div className="decoration-accent decoration-accent-1" />
+      <div className="decoration-accent decoration-accent-2" />
+      <div className="decoration-accent decoration-accent-3" />
+
       {/* Header Simplificado */}
       <div className="glass sticky top-0 z-40 border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
