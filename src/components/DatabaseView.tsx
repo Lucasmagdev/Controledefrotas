@@ -6,6 +6,7 @@ import { RecordDetails } from './RecordDetails';
 import { Modal } from './Modal';
 import { VehicleForm } from './VehicleForm';
 import { exportToCSV, exportDailyUtilizationExcel, generatePrintReport } from '../utils/export';
+import { formatDateBR, getDateKey, toDateInputValue } from '../utils/date';
 import type { VehicleRecord, FleetVehicle } from '../types/database';
 
 interface DatabaseViewProps {
@@ -58,20 +59,22 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
       console.log('📊 Veículos carregados:', allVehicles);
       
       if (vehicleFilterStart) {
-        const filterStart = vehicleFilterStart;
-        const filterEnd = vehicleFilterEnd || vehicleFilterStart;
+        const selectedEnd = vehicleFilterEnd || vehicleFilterStart;
+        const filterStart = vehicleFilterStart <= selectedEnd ? vehicleFilterStart : selectedEnd;
+        const filterEnd = vehicleFilterStart <= selectedEnd ? selectedEnd : vehicleFilterStart;
         
-        console.log('🔍 Filtrando veículos entre:', filterStart, 'e', filterEnd);
+        console.log('Filtrando veículos entre:', filterStart, 'e', filterEnd);
 
         const filtered = allVehicles.filter(v => {
-          const createdDateStr = v.created_at.split('T')[0];
+          const createdDateStr = getDateKey(v.created_at);
+          if (!createdDateStr) return false;
           return createdDateStr >= filterStart && createdDateStr <= filterEnd;
         });
         
-        console.log('✅ Veículos filtrados:', filtered);
+        console.log('Veículos filtrados:', filtered);
         setFilteredVehicles(filtered);
       } else {
-        setFilteredVehicles([]);
+        setFilteredVehicles(allVehicles);
       }
     } catch (error) {
       console.error('Erro ao carregar veículos:', error);
@@ -80,8 +83,7 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
 
   useEffect(() => {
     // Pré-popular com a data de hoje ao montar o componente
-    const today = new Date();
-    const todayStr = `${String(today.getFullYear())}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const todayStr = toDateInputValue(new Date());
     setVehicleFilterStart(todayStr);
     setVehicleFilterEnd(todayStr);
   }, []);
@@ -321,7 +323,7 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-semibold text-gray-900">
-                          {new Date(record.pickup_date).toLocaleDateString('pt-BR')}
+                          {formatDateBR(record.pickup_date)}
                         </div>
                         <div className="text-xs text-gray-500 font-medium">{record.pickup_time}</div>
                       </td>
@@ -343,7 +345,7 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
                         {record.return_date ? (
                           <>
                             <div className="text-sm font-semibold text-gray-900">
-                              {new Date(record.return_date).toLocaleDateString('pt-BR')}
+                              {formatDateBR(record.return_date)}
                             </div>
                             <div className="text-xs text-gray-500 font-medium">{record.return_time}</div>
                           </>
@@ -430,14 +432,14 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
                   <div className="flex items-center gap-2 text-sm">
                     <span className="font-semibold text-gray-700 min-w-[80px]">Retirada:</span>
                     <span className="text-gray-900">
-                      {new Date(record.pickup_date).toLocaleDateString('pt-BR')} às {record.pickup_time}
+                      {formatDateBR(record.pickup_date)} às {record.pickup_time}
                     </span>
                   </div>
                   {record.return_date && (
                     <div className="flex items-center gap-2 text-sm">
                       <span className="font-semibold text-gray-700 min-w-[80px]">Devolução:</span>
                       <span className="text-gray-900">
-                        {new Date(record.return_date).toLocaleDateString('pt-BR')} às {record.return_time}
+                        {formatDateBR(record.return_date)} às {record.return_time}
                       </span>
                     </div>
                   )}
@@ -540,7 +542,7 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
       </div>
 
       {/* Seção de Veículos da Gestão Cadastrados naquela Data */}
-      {filteredVehicles.length > 0 && (
+      {(filteredVehicles.length > 0 || !!vehicleFilterStart) && (
         <div className="glass rounded-2xl shadow-premium overflow-hidden animate-fade-in">
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200 px-6 py-5">
             <div className="flex items-center gap-3">
@@ -550,9 +552,11 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
               <div>
                 <h3 className="text-lg font-bold text-gray-900">Veículos Cadastrados</h3>
                 <p className="text-sm text-gray-600">
-                  {vehicleFilterStart === vehicleFilterEnd
-                    ? `Cadastrados em ${new Date(vehicleFilterStart + 'T00:00:00').toLocaleDateString('pt-BR')}`
-                    : `Cadastrados entre ${new Date(vehicleFilterStart + 'T00:00:00').toLocaleDateString('pt-BR')} e ${new Date(vehicleFilterEnd + 'T00:00:00').toLocaleDateString('pt-BR')}`
+                  {!vehicleFilterStart
+                    ? 'Todos os veículos cadastrados'
+                    : vehicleFilterStart === (vehicleFilterEnd || vehicleFilterStart)
+                    ? `Cadastrados em ${formatDateBR(vehicleFilterStart)}`
+                    : `Cadastrados entre ${formatDateBR(vehicleFilterStart)} e ${formatDateBR(vehicleFilterEnd)}`
                   }
                 </p>
               </div>
@@ -560,6 +564,11 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
           </div>
 
           <div className="p-6 space-y-4">
+            {filteredVehicles.length === 0 && (
+              <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+                Nenhum veículo cadastrado no período selecionado.
+              </div>
+            )}
             {filteredVehicles.map((vehicle, index) => (
               <div
                 key={vehicle.id}
@@ -588,7 +597,7 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
                       <p className="text-sm text-gray-600">📋 {vehicle.responsible_name}</p>
                     )}
                     <p className="text-xs text-gray-500 mt-2">
-                      Cadastrado em {new Date(vehicle.created_at).toLocaleDateString('pt-BR')} às {new Date(vehicle.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      Cadastrado em {formatDateBR(vehicle.created_at)} às {new Date(vehicle.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
                 </div>

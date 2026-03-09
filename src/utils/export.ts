@@ -1,4 +1,5 @@
 import type { VehicleRecord, FleetVehicle } from '../types/database';
+import { formatDateBR } from './date';
 
 export function exportToCSV(records: VehicleRecord[]) {
   const headers = [
@@ -19,10 +20,10 @@ export function exportToCSV(records: VehicleRecord[]) {
     record.vehicle_plate,
     record.reason,
     record.authorized_by,
-    new Date(record.pickup_date).toLocaleDateString('pt-BR'),
+    formatDateBR(record.pickup_date, ''),
     record.pickup_time,
     record.pickup_name,
-    record.return_date ? new Date(record.return_date).toLocaleDateString('pt-BR') : '',
+    record.return_date ? formatDateBR(record.return_date, '') : '',
     record.return_time || '',
     record.return_name || '',
     record.status,
@@ -52,19 +53,24 @@ export function exportToCSV(records: VehicleRecord[]) {
 
 export function exportDailyUtilizationExcel(records: VehicleRecord[], vehicles: FleetVehicle[] = []) {
   // Preparar dados dos registros de uso
-  const recordHeaders = ['Placa', 'Status', 'Motorista (Uso)'];
+  const recordHeaders = ['Placa', 'Status', 'Motorista (Uso)', 'Data', 'Hora Retirada', 'Hora Devolução'];
   const recordRows = records.map((record) => [
     record.vehicle_plate,
     record.status,
     record.pickup_name,
+    formatDateBR(record.pickup_date),
+    record.pickup_time || '-',
+    record.return_time || '-',
   ]);
 
   // Preparar dados dos veículos cadastrados
-  const vehicleHeaders = ['Placa', 'Status', 'Motorista (Responsável)'];
   const vehicleRows = vehicles.map((vehicle) => [
     vehicle.plate,
     vehicle.status,
     vehicle.responsible_name || '-',
+    formatDateBR(vehicle.created_at),
+    '-',
+    '-',
   ]);
 
   // Combinar headers
@@ -109,11 +115,11 @@ export function generatePrintReport(records: VehicleRecord[], filters?: {
   const filterInfo = [];
   if (filters?.startDate) {
     filterInfo.push(
-      `Data inicial: ${new Date(filters.startDate).toLocaleDateString('pt-BR')}`
+      `Data inicial: ${formatDateBR(filters.startDate)}`
     );
   }
   if (filters?.endDate) {
-    filterInfo.push(`Data final: ${new Date(filters.endDate).toLocaleDateString('pt-BR')}`);
+    filterInfo.push(`Data final: ${formatDateBR(filters.endDate)}`);
   }
   if (filters?.status && filters.status !== 'Todos') {
     filterInfo.push(`Status: ${filters.status}`);
@@ -263,11 +269,11 @@ export function generatePrintReport(records: VehicleRecord[], filters?: {
             <tr>
               <td>${record.vehicle_plate}</td>
               <td>${record.reason}</td>
-              <td>${new Date(record.pickup_date).toLocaleDateString('pt-BR')} ${record.pickup_time}</td>
+              <td>${formatDateBR(record.pickup_date)} ${record.pickup_time}</td>
               <td>${record.pickup_name}</td>
               <td>${
                 record.return_date
-                  ? `${new Date(record.return_date).toLocaleDateString('pt-BR')} ${record.return_time}`
+                  ? `${formatDateBR(record.return_date)} ${record.return_time}`
                   : '-'
               }</td>
               <td><span class="status ${record.status === 'Em uso' ? 'em-uso' : 'devolvido'}">${record.status}</span></td>

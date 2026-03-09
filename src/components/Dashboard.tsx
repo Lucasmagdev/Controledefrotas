@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import type { VehicleRecord } from '../types/database';
 import { reportService } from '../services/reportService';
+import { formatDateBR } from '../utils/date';
 
 interface DashboardProps {
   records: VehicleRecord[];
@@ -180,8 +181,8 @@ export function Dashboard({ records }: DashboardProps) {
         )}
 
         <p className="text-sm text-gray-600">
-          Período aplicado: <strong>{new Date(`${startDate}T00:00:00`).toLocaleDateString('pt-BR')}</strong> a{' '}
-          <strong>{new Date(`${endDate}T00:00:00`).toLocaleDateString('pt-BR')}</strong>
+          Período aplicado: <strong>{formatDateBR(startDate)}</strong> a{' '}
+          <strong>{formatDateBR(endDate)}</strong>
           {' '}({filteredRecords.length} registro{filteredRecords.length === 1 ? '' : 's'})
         </p>
       </div>
@@ -409,7 +410,7 @@ export function Dashboard({ records }: DashboardProps) {
                   </span>
                 </div>
                 <div className="mt-3 text-xs text-gray-500">
-                  Retirado em: {new Date(vehicle.pickup_date).toLocaleDateString('pt-BR')}
+                  Retirado em: {formatDateBR(vehicle.pickup_date)}
                 </div>
               </div>
             ))}

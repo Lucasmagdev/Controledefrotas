@@ -1,5 +1,6 @@
 import { Modal } from './Modal';
 import type { VehicleRecord } from '../types/database';
+import { formatDateBR } from '../utils/date';
 
 interface RecordDetailsProps {
   record: VehicleRecord | null;
@@ -9,10 +10,6 @@ interface RecordDetailsProps {
 
 export function RecordDetails({ record, isOpen, onClose }: RecordDetailsProps) {
   if (!record) return null;
-
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('pt-BR');
-  };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Detalhes do Registro" size="xl">
@@ -53,7 +50,7 @@ export function RecordDetails({ record, isOpen, onClose }: RecordDetailsProps) {
             <div className="space-y-2 text-sm">
               <div>
                 <span className="font-medium text-gray-600">Data:</span>
-                <p className="text-gray-800">{formatDate(record.pickup_date)}</p>
+                <p className="text-gray-800">{formatDateBR(record.pickup_date)}</p>
               </div>
               <div>
                 <span className="font-medium text-gray-600">Hora:</span>
@@ -84,7 +81,7 @@ export function RecordDetails({ record, isOpen, onClose }: RecordDetailsProps) {
               <div className="space-y-2 text-sm">
                 <div>
                   <span className="font-medium text-gray-600">Data:</span>
-                  <p className="text-gray-800">{formatDate(record.return_date)}</p>
+                  <p className="text-gray-800">{formatDateBR(record.return_date)}</p>
                 </div>
                 <div>
                   <span className="font-medium text-gray-600">Hora:</span>
