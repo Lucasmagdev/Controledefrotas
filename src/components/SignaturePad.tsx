@@ -7,12 +7,13 @@ interface SignaturePadProps {
   label: string;
   required?: boolean;
   error?: string;
+  disabled?: boolean;
 }
 
 const CANVAS_WIDTH = 600;
 const CANVAS_HEIGHT = 250;
 
-export function SignaturePad({ value, onChange, label, required, error }: SignaturePadProps) {
+export function SignaturePad({ value, onChange, label, required, error, disabled }: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [isEmpty, setIsEmpty] = useState(true);
@@ -223,7 +224,7 @@ export function SignaturePad({ value, onChange, label, required, error }: Signat
   };
 
   return (
-    <div className="space-y-3 input-enhanced">
+    <div className={`space-y-3 input-enhanced ${disabled ? 'opacity-60' : ''}`}>
       <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
         <PenTool className="w-4 h-4 text-purple-500" />
         {label} {required && <span className="text-red-500 text-base">*</span>}
@@ -233,11 +234,11 @@ export function SignaturePad({ value, onChange, label, required, error }: Signat
         className={`relative group rounded-2xl overflow-hidden border-2 transition-all duration-300 shadow-premium hover:shadow-premium-lg ${
           error 
             ? 'border-red-400 bg-red-50/30' 
-            : isHovering 
+            : isHovering && !disabled
             ? 'border-purple-400 bg-purple-50/30' 
             : 'border-gray-200 bg-white'
         }`}
-        onMouseEnter={() => setIsHovering(true)}
+        onMouseEnter={() => !disabled && setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >
         {/* Canvas com gradiente de fundo */}
@@ -247,7 +248,7 @@ export function SignaturePad({ value, onChange, label, required, error }: Signat
               <div className="text-center space-y-2 animate-bounce-in">
                 <PenTool className="w-12 h-12 text-gray-300 mx-auto" />
                 <p className="text-sm font-semibold text-gray-400">
-                  Assine aqui
+                  {disabled ? 'Somente leitura' : 'Assine aqui'}
                 </p>
               </div>
             </div>
@@ -257,8 +258,12 @@ export function SignaturePad({ value, onChange, label, required, error }: Signat
             ref={canvasRef}
             width={CANVAS_WIDTH}
             height={CANVAS_HEIGHT}
-            className={`w-full block cursor-crosshair transition-all duration-300 ${
-              isDrawing ? 'cursor-none' : 'cursor-crosshair'
+            className={`w-full block transition-all duration-300 ${
+              disabled 
+                ? 'cursor-not-allowed' 
+                : isDrawing 
+                ? 'cursor-none' 
+                : 'cursor-crosshair'
             }`}
             style={{
               touchAction: 'none',
@@ -267,17 +272,17 @@ export function SignaturePad({ value, onChange, label, required, error }: Signat
               height: 'clamp(200px, 40vw, 250px)',
               backgroundColor: '#ffffff',
             }}
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
-            onMouseUp={stopDrawing}
-            onMouseLeave={stopDrawing}
-            onTouchStart={startDrawing}
-            onTouchMove={draw}
-            onTouchEnd={stopDrawing}
+            onMouseDown={disabled ? undefined : startDrawing}
+            onMouseMove={disabled ? undefined : draw}
+            onMouseUp={disabled ? undefined : stopDrawing}
+            onMouseLeave={disabled ? undefined : stopDrawing}
+            onTouchStart={disabled ? undefined : startDrawing}
+            onTouchMove={disabled ? undefined : draw}
+            onTouchEnd={disabled ? undefined : stopDrawing}
           />
 
           {/* Cursor customizado durante desenho */}
-          {isDrawing && (
+          {isDrawing && !disabled && (
             <div className="absolute top-2 left-2 animate-pulse">
               <div className="w-3 h-3 bg-purple-500 rounded-full shadow-lg"></div>
             </div>
@@ -289,7 +294,12 @@ export function SignaturePad({ value, onChange, label, required, error }: Signat
           <button
             type="button"
             onClick={clear}
-            className="group relative w-full sm:w-auto justify-center flex items-center gap-2 px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl transition-all duration-200 shadow-sm hover:shadow-md"
+            disabled={disabled}
+            className={`group relative w-full sm:w-auto justify-center flex items-center gap-2 px-5 py-2.5 text-white font-semibold rounded-xl transition-all duration-200 shadow-sm ${ 
+              disabled 
+                ? 'opacity-50 cursor-not-allowed bg-red-400'
+                : 'bg-red-500 hover:bg-red-600 hover:shadow-md'
+            }`}
           >
             <Trash2 className="w-4 h-4" />
             <span>Limpar</span>
@@ -304,13 +314,13 @@ export function SignaturePad({ value, onChange, label, required, error }: Signat
 
           {isEmpty && (
             <div className="hidden sm:flex items-center gap-2 px-4 py-2 text-sm text-gray-500 font-medium">
-              <span>Clique ou toque para assinar</span>
+              <span>{disabled ? 'Somente leitura' : 'Clique ou toque para assinar'}</span>
             </div>
           )}
         </div>
 
         {/* Borda animada no hover */}
-        {isHovering && !error && (
+        {isHovering && !error && !disabled && (
           <div className="absolute inset-0 rounded-2xl pointer-events-none">
             <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500 opacity-20 animate-pulse"></div>
           </div>

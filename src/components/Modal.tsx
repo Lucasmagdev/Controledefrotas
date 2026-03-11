@@ -31,8 +31,8 @@ export function Modal({ isOpen, onClose, title, children, size = 'lg' }: ModalPr
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto animate-fade-in">
-      <div className="flex min-h-screen items-end sm:items-center justify-center p-2 sm:p-4">
+    <div className="fixed inset-0 z-[70] overflow-y-auto animate-fade-in">
+      <div className="flex min-h-[100dvh] items-end sm:items-center justify-center p-2 sm:p-4">
         {/* Backdrop com blur */}
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-all duration-300"
@@ -41,7 +41,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'lg' }: ModalPr
         
         {/* Modal Content */}
         <div
-          className={`relative glass rounded-2xl sm:rounded-3xl shadow-premium-lg w-full ${sizeClasses[size]} max-h-[92vh] overflow-hidden animate-scale-in`}
+          className={`relative glass rounded-2xl sm:rounded-3xl shadow-premium-lg w-full ${sizeClasses[size]} max-h-[92dvh] sm:max-h-[92vh] overflow-hidden animate-scale-in`}
         >
           {/* Header */}
           <div className="sticky top-0 bg-white border-b px-6 sm:px-8 py-4 sm:py-5 flex items-center justify-between z-10">
@@ -55,7 +55,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'lg' }: ModalPr
           </div>
           
           {/* Content */}
-          <div className="p-6 sm:p-8 overflow-y-auto max-h-[calc(92vh-80px)]">
+          <div className="p-6 sm:p-8 overflow-y-auto max-h-[calc(92dvh-80px)] sm:max-h-[calc(92vh-80px)]">
             {children}
           </div>
         </div>

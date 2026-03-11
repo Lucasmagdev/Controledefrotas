@@ -30,7 +30,7 @@ export function Input({ label, error, success, required, className = '', type = 
               : success
               ? 'border-green-400 focus:border-green-500 focus:ring-4 focus:ring-green-100'
               : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
-          } ${isPassword ? 'pr-12' : ''} ${className}`}
+          } ${isPassword ? 'pr-12' : ''} ${props.disabled ? 'opacity-60 cursor-not-allowed bg-gray-100' : ''} ${className}`}
           {...props}
         />
         

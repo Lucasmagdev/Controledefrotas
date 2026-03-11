@@ -9,6 +9,7 @@ interface ChipSelectProps {
   placeholder?: string;
   required?: boolean;
   error?: string;
+  disabled?: boolean;
 }
 
 export function ChipSelect({
@@ -19,11 +20,12 @@ export function ChipSelect({
   placeholder,
   required,
   error,
+  disabled,
 }: ChipSelectProps) {
   const [isFocused, setIsFocused] = useState(false);
 
   return (
-    <div className="space-y-3 input-enhanced">
+    <div className={`space-y-3 input-enhanced ${disabled ? 'opacity-60' : ''}`}>
       <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
         {label} {required && <span className="text-red-500 text-base">*</span>}
       </label>
@@ -34,9 +36,12 @@ export function ChipSelect({
           <button
             key={suggestion}
             type="button"
-            onClick={() => onChange(suggestion)}
+            onClick={() => disabled || onChange(suggestion)}
+            disabled={disabled}
             className={`group relative px-4 py-2 text-sm font-semibold rounded-xl transition-all duration-200 ${
-              value === suggestion
+              disabled
+                ? 'opacity-50 cursor-not-allowed'
+                : value === suggestion
                 ? 'gradient-primary text-white shadow-md'
                 : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200'
             }`}
@@ -51,15 +56,16 @@ export function ChipSelect({
         <input
           type="text"
           value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onFocus={() => setIsFocused(true)}
+          onChange={(e) => !disabled && onChange(e.target.value)}
+          onFocus={() => !disabled && setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           placeholder={placeholder}
+          disabled={disabled}
           className={`w-full px-4 py-3 rounded-xl border-2 transition-all duration-300 bg-white text-gray-900 font-medium placeholder:text-gray-400 ${
             error
               ? 'border-red-400 focus:border-red-500 focus:ring-4 focus:ring-red-100'
               : 'border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 hover:border-gray-300'
-          }`}
+          } ${disabled ? 'opacity-60 cursor-not-allowed bg-gray-100' : ''}`}
         />
         
         {isFocused && !error && (
