@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Truck, LogOut, LogIn, FileText, Save, RotateCcw } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Truck, LogOut, LogIn, FileText, Save, RotateCcw, Search } from 'lucide-react';
 import { Input } from './Input';
 import { Textarea } from './Textarea';
 import { ChipSelect } from './ChipSelect';
@@ -15,6 +15,14 @@ interface VehicleFormProps {
 }
 const REASON_SUGGESTIONS = ['Visita tecnica', 'Entrega', 'Reuniao', 'Manutencao', 'Outro'];
 const AUTHORIZATION_SUGGESTIONS = ['Gestor', 'Diretoria', 'RH', 'Coordenacao', 'Outro'];
+
+function normalizeSearchValue(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
 
 export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) {
   const isReturnMode = !!(editData?.id && editData?.status === 'Em uso' && editData?.pickup_signature);
@@ -40,12 +48,13 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [vehicles, setVehicles] = useState<FleetVehicle[]>([]);
   const [loadingVehicles, setLoadingVehicles] = useState(true);
+  const [vehicleSearch, setVehicleSearch] = useState('');
 
   useEffect(() => {
     const loadVehicles = async () => {
       try {
         const activeVehicles = await vehicleCatalogService.listVehicles({
-          statusFilter: 'Ativo',
+          status: 'Ativo',
         });
         setVehicles(activeVehicles);
       } catch (error) {
@@ -58,6 +67,37 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
 
     loadVehicles();
   }, []);
+
+  const filteredVehicles = useMemo(() => {
+    const normalizedSearch = normalizeSearchValue(vehicleSearch);
+
+    if (!normalizedSearch) {
+      return vehicles;
+    }
+
+    return vehicles.filter((vehicle) => {
+      const searchableText = normalizeSearchValue(
+        `${vehicle.plate} ${vehicle.name} ${vehicle.responsible_name || ''}`
+      );
+
+      return searchableText.includes(normalizedSearch);
+    });
+  }, [vehicleSearch, vehicles]);
+
+  const displayedVehicles = useMemo(() => {
+    if (!formData.vehicle_plate) {
+      return filteredVehicles;
+    }
+
+    const selectedVehicle = vehicles.find((vehicle) => vehicle.plate === formData.vehicle_plate);
+    const selectedAlreadyVisible = filteredVehicles.some((vehicle) => vehicle.plate === formData.vehicle_plate);
+
+    if (!selectedVehicle || selectedAlreadyVisible) {
+      return filteredVehicles;
+    }
+
+    return [selectedVehicle, ...filteredVehicles];
+  }, [filteredVehicles, formData.vehicle_plate, vehicles]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -121,7 +161,7 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
         formData.return_signature
       );
 
-      const status = isReturnMode
+      const status: VehicleRecordInput['status'] = isReturnMode
         ? 'Devolvido'
         : isNewPickup
           ? 'Em uso'
@@ -129,35 +169,47 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
             ? 'Devolvido'
             : 'Em uso';
 
-      const dataToSave = isReturnMode
-        ? {
-            return_date: formData.return_date,
-            return_time: formData.return_time,
-            return_name: formData.return_name,
-            return_signature: formData.return_signature,
-            observations: formData.observations,
-            status,
-          }
-        : {
-            vehicle_plate: formData.vehicle_plate,
-            reason: formData.reason,
-            authorized_by: formData.authorized_by,
-            pickup_date: formData.pickup_date,
-            pickup_time: formData.pickup_time,
-            pickup_name: formData.pickup_name,
-            pickup_signature: formData.pickup_signature,
-            return_date: isNewPickup ? undefined : formData.return_date || undefined,
-            return_time: isNewPickup ? undefined : formData.return_time || undefined,
-            return_name: isNewPickup ? undefined : formData.return_name || undefined,
-            return_signature: isNewPickup ? undefined : formData.return_signature || undefined,
-            observations: formData.observations,
-            status,
-          };
-
       if (editData?.id) {
-        await vehicleService.updateRecord(editData.id, dataToSave);
+        const updatePayload: Partial<VehicleRecordInput> = isReturnMode
+          ? {
+              return_date: formData.return_date || undefined,
+              return_time: formData.return_time || undefined,
+              return_name: formData.return_name || undefined,
+              return_signature: formData.return_signature || undefined,
+              observations: formData.observations,
+              status,
+            }
+          : {
+              vehicle_plate: formData.vehicle_plate,
+              reason: formData.reason,
+              authorized_by: formData.authorized_by,
+              pickup_date: formData.pickup_date,
+              pickup_time: formData.pickup_time,
+              pickup_name: formData.pickup_name,
+              pickup_signature: formData.pickup_signature,
+              return_date: formData.return_date || undefined,
+              return_time: formData.return_time || undefined,
+              return_name: formData.return_name || undefined,
+              return_signature: formData.return_signature || undefined,
+              observations: formData.observations,
+              status,
+            };
+
+        await vehicleService.updateRecord(editData.id, updatePayload);
       } else {
-        await vehicleService.createRecord(dataToSave);
+        const createPayload: VehicleRecordInput = {
+          vehicle_plate: formData.vehicle_plate,
+          reason: formData.reason,
+          authorized_by: formData.authorized_by,
+          pickup_date: formData.pickup_date,
+          pickup_time: formData.pickup_time,
+          pickup_name: formData.pickup_name,
+          pickup_signature: formData.pickup_signature,
+          observations: formData.observations,
+          status,
+        };
+
+        await vehicleService.createRecord(createPayload);
       }
 
       onSuccess();
@@ -190,6 +242,7 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
       status: 'Em uso',
     });
     setErrors({});
+    setVehicleSearch('');
   };
 
   return (
@@ -270,25 +323,47 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
                 <span className="text-red-600 text-sm font-medium">Nenhum veiculo ativo disponivel</span>
               </div>
             ) : (
-              <select
-                value={formData.vehicle_plate}
-                onChange={(e) => {
-                  setFormData((prev) => ({ ...prev, vehicle_plate: e.target.value }));
-                  if (errors.vehicle_plate) setErrors((prev) => ({ ...prev, vehicle_plate: '' }));
-                }}
-                disabled={isReturnMode}
-                className={`w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:outline-none transition-colors bg-white text-gray-900 font-medium ${
-                  isReturnMode ? 'opacity-60 cursor-not-allowed' : ''
-                }`}
-              >
-                <option value="">Selecione um veiculo...</option>
-                {vehicles.map((vehicle) => (
-                  <option key={vehicle.id} value={vehicle.plate}>
-                    {vehicle.plate} - {vehicle.name}
-                    {vehicle.responsible_name ? ` (${vehicle.responsible_name})` : ''}
-                  </option>
-                ))}
-              </select>
+              <div className="space-y-3">
+                <div className="relative">
+                  <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={vehicleSearch}
+                    onChange={(e) => setVehicleSearch(e.target.value)}
+                    placeholder="Pesquisar por placa, nome ou responsavel"
+                    disabled={isReturnMode}
+                    className={`w-full pl-11 pr-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:outline-none transition-colors bg-white text-gray-900 ${
+                      isReturnMode ? 'opacity-60 cursor-not-allowed' : ''
+                    }`}
+                  />
+                </div>
+
+                <select
+                  value={formData.vehicle_plate}
+                  onChange={(e) => {
+                    setFormData((prev) => ({ ...prev, vehicle_plate: e.target.value }));
+                    if (errors.vehicle_plate) setErrors((prev) => ({ ...prev, vehicle_plate: '' }));
+                  }}
+                  disabled={isReturnMode}
+                  className={`w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:outline-none transition-colors bg-white text-gray-900 font-medium ${
+                    isReturnMode ? 'opacity-60 cursor-not-allowed' : ''
+                  }`}
+                >
+                  <option value="">Selecione um veiculo...</option>
+                  {displayedVehicles.map((vehicle) => (
+                    <option key={vehicle.id} value={vehicle.plate}>
+                      {vehicle.plate} - {vehicle.name}
+                      {vehicle.responsible_name ? ` (${vehicle.responsible_name})` : ''}
+                    </option>
+                  ))}
+                </select>
+
+                <p className="text-xs text-gray-500">
+                  {filteredVehicles.length === vehicles.length && !vehicleSearch.trim()
+                    ? `${vehicles.length} veiculo(s) disponivel(is)`
+                    : `${filteredVehicles.length} resultado(s) para "${vehicleSearch.trim()}"`}
+                </p>
+              </div>
             )}
             {errors.vehicle_plate && <p className="mt-2 text-sm text-red-600 font-medium">{errors.vehicle_plate}</p>}
           </div>
