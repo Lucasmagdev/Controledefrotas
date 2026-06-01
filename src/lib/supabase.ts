@@ -4,10 +4,17 @@ import type { Database } from '../types/database';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+
+if (!isSupabaseConfigured) {
+  console.warn(
+    'Supabase nao configurado. O app vai abrir, mas as funcoes que dependem de banco/fotos vao falhar ate voce preencher as variaveis de ambiente.'
+  );
 }
 
-console.log('🔗 Conectando ao Supabase:', supabaseUrl?.split('.')[0] + '...');
+const clientUrl = supabaseUrl || 'https://placeholder.supabase.co';
+const clientKey = supabaseAnonKey || 'placeholder-anon-key';
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+console.log('🔗 Conectando ao Supabase:', clientUrl.split('.')[0] + '...');
+
+export const supabase = createClient<Database>(clientUrl, clientKey);

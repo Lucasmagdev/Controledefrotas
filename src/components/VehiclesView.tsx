@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Car, Search, Wrench, CheckCircle2, PauseCircle, Plus, Edit2, Trash2, ListFilter } from 'lucide-react';
+import QRCode from 'qrcode';
+import { Car, Search, Wrench, CheckCircle2, PauseCircle, Plus, Edit2, Trash2, ListFilter, QrCode, Download, Printer } from 'lucide-react';
 import { Input } from './Input';
+import { Modal } from './Modal';
 import { vehicleCatalogService } from '../services/vehicleCatalogService';
 import type { FleetVehicle, FleetVehicleInput, VehicleStatus } from '../types/database';
 
@@ -18,6 +20,18 @@ const INITIAL_FORM: FleetVehicleInput = {
   status: 'Ativo',
 };
 
+function getQrBaseUrl() {
+  const configuredUrl = import.meta.env.VITE_PUBLIC_APP_URL?.trim();
+  return (configuredUrl || window.location.origin).replace(/\/$/, '');
+}
+
+function getVehicleQrUrl(vehicle: FleetVehicle) {
+  const url = new URL(getQrBaseUrl());
+  url.searchParams.set('tab', 'patio');
+  url.searchParams.set('veiculo', vehicle.short_code || vehicle.plate);
+  return url.toString();
+}
+
 export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
   const [vehicles, setVehicles] = useState<FleetVehicle[]>([]);
   const [loading, setLoading] = useState(false);
@@ -27,6 +41,9 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
   const [formData, setFormData] = useState<FleetVehicleInput>(INITIAL_FORM);
   const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Partial<Record<keyof FleetVehicleInput, string>>>({});
+  const [qrVehicle, setQrVehicle] = useState<FleetVehicle | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState('');
+  const [qrGenerating, setQrGenerating] = useState(false);
 
   const loadVehicles = async () => {
     try {
@@ -141,6 +158,76 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
       console.error('Erro ao excluir veículo:', error);
       onError('Erro ao excluir veículo');
     }
+  };
+
+  const openQrModal = async (vehicle: FleetVehicle) => {
+    try {
+      setQrVehicle(vehicle);
+      setQrGenerating(true);
+      setQrDataUrl('');
+
+      const dataUrl = await QRCode.toDataURL(getVehicleQrUrl(vehicle), {
+        width: 360,
+        margin: 2,
+        errorCorrectionLevel: 'M',
+        color: {
+          dark: '#111827',
+          light: '#ffffff',
+        },
+      });
+
+      setQrDataUrl(dataUrl);
+    } catch (error) {
+      console.error('Erro ao gerar QR Code:', error);
+      onError('Erro ao gerar QR Code do veÃ­culo');
+    } finally {
+      setQrGenerating(false);
+    }
+  };
+
+  const downloadQr = () => {
+    if (!qrVehicle || !qrDataUrl) return;
+
+    const link = document.createElement('a');
+    link.href = qrDataUrl;
+    link.download = `qr-${qrVehicle.plate}-${qrVehicle.short_code || 'veiculo'}.png`;
+    link.click();
+  };
+
+  const printQr = () => {
+    if (!qrVehicle || !qrDataUrl) return;
+
+    const printWindow = window.open('', '_blank', 'width=420,height=640');
+    if (!printWindow) {
+      onError('NÃ£o foi possÃ­vel abrir a janela de impressÃ£o');
+      return;
+    }
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>QR ${qrVehicle.plate}</title>
+          <style>
+            body { font-family: Arial, sans-serif; display: grid; min-height: 100vh; place-items: center; margin: 0; }
+            .label { width: 320px; border: 2px solid #111827; border-radius: 18px; padding: 20px; text-align: center; }
+            img { width: 240px; height: 240px; }
+            h1 { margin: 10px 0 4px; font-size: 30px; }
+            p { margin: 4px 0; color: #374151; }
+            .code { font-size: 18px; font-weight: 700; color: #111827; }
+          </style>
+        </head>
+        <body>
+          <div class="label">
+            <img src="${qrDataUrl}" alt="QR Code do veiculo" />
+            <h1>${qrVehicle.plate}</h1>
+            <p>${qrVehicle.name}</p>
+            <p class="code">${qrVehicle.short_code || qrVehicle.plate}</p>
+          </div>
+          <script>window.onload = () => { window.print(); window.close(); };</script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   const statusStyle = (status: VehicleStatus) => {
@@ -322,6 +409,14 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
+                        onClick={() => openQrModal(vehicle)}
+                        className="p-2.5 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50"
+                        title="Gerar QR"
+                      >
+                        <QrCode className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => startEdit(vehicle)}
                         className="p-2.5 rounded-xl border border-blue-200 text-blue-700 hover:bg-blue-50"
                         title="Editar"
@@ -350,6 +445,63 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
           </div>
         </section>
       </div>
+
+      <Modal
+        isOpen={!!qrVehicle}
+        onClose={() => setQrVehicle(null)}
+        title="QR Code do veiculo"
+        size="md"
+      >
+        {qrVehicle && (
+          <div className="space-y-5">
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-center">
+              <p className="text-sm font-semibold text-gray-500">Etiqueta fixa do veiculo</p>
+              <h3 className="mt-1 text-2xl font-bold text-gray-900">{qrVehicle.plate}</h3>
+              <p className="text-gray-600">{qrVehicle.name}</p>
+              <p className="mt-1 text-sm font-semibold text-gray-700">Codigo: {qrVehicle.short_code || qrVehicle.plate}</p>
+            </div>
+
+            <div className="flex justify-center rounded-2xl border border-gray-200 bg-white p-5">
+              {qrGenerating ? (
+                <div className="py-24 text-sm text-gray-500">Gerando QR Code...</div>
+              ) : qrDataUrl ? (
+                <img src={qrDataUrl} alt={`QR Code do veiculo ${qrVehicle.plate}`} className="h-64 w-64" />
+              ) : (
+                <div className="py-24 text-sm text-gray-500">QR indisponivel.</div>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+              <p className="text-sm font-semibold text-blue-900">Link permanente</p>
+              <p className="mt-2 break-all text-sm text-blue-800">{getVehicleQrUrl(qrVehicle)}</p>
+              <p className="mt-2 text-xs text-blue-700">
+                Este QR usa o codigo curto do veiculo. Ele continua funcionando enquanto o veiculo existir no banco e o dominio do Netlify continuar o mesmo.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={downloadQr}
+                disabled={!qrDataUrl}
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-3 font-semibold text-white hover:bg-black disabled:opacity-60"
+              >
+                <Download className="w-4 h-4" />
+                Baixar PNG
+              </button>
+              <button
+                type="button"
+                onClick={printQr}
+                disabled={!qrDataUrl}
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3 font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+              >
+                <Printer className="w-4 h-4" />
+                Imprimir etiqueta
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

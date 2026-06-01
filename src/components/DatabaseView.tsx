@@ -7,7 +7,7 @@ import { Modal } from './Modal';
 import { VehicleForm } from './VehicleForm';
 import { exportToCSV, exportDailyUtilizationExcel, generatePrintReport } from '../utils/export';
 import { formatDateBR, getDateKey, toDateInputValue } from '../utils/date';
-import type { VehicleRecord, FleetVehicle } from '../types/database';
+import type { VehicleRecord, FleetVehicle, VehicleRecordInput } from '../types/database';
 
 interface DatabaseViewProps {
   onSuccess: (message: string) => void;
@@ -16,7 +16,6 @@ interface DatabaseViewProps {
 }
 
 export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseViewProps) {
-  const [records, setRecords] = useState<VehicleRecord[]>([]);
   const [filteredRecords, setFilteredRecords] = useState<VehicleRecord[]>([]);
   const [filteredVehicles, setFilteredVehicles] = useState<FleetVehicle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,7 +42,6 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
         endDate: recordFilterEnd,
       });
       console.log(`✅ ${data.length} registro(s) carregado(s)`, data);
-      setRecords(data);
       setFilteredRecords(data);
     } catch (error) {
       console.error('Error loading records:', error);
@@ -137,6 +135,23 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
     inUse: filteredRecords.filter((r) => r.status === 'Em uso').length,
     returned: filteredRecords.filter((r) => r.status === 'Devolvido').length,
   };
+
+  const toVehicleFormData = (record: VehicleRecord): VehicleRecordInput & { id: string } => ({
+    id: record.id,
+    vehicle_plate: record.vehicle_plate,
+    reason: record.reason,
+    authorized_by: record.authorized_by,
+    pickup_date: record.pickup_date,
+    pickup_time: record.pickup_time,
+    pickup_name: record.pickup_name,
+    pickup_signature: record.pickup_signature,
+    return_date: record.return_date || undefined,
+    return_time: record.return_time || undefined,
+    return_name: record.return_name || undefined,
+    return_signature: record.return_signature || undefined,
+    observations: record.observations || undefined,
+    status: record.status,
+  });
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -626,7 +641,7 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
         size="xl"
       >
         <VehicleForm
-          editData={recordToEdit ? { ...recordToEdit, id: recordToEdit.id } : undefined}
+          editData={recordToEdit ? toVehicleFormData(recordToEdit) : undefined}
           onSuccess={() => {
             onSuccess('Registro atualizado com sucesso');
             setIsEditOpen(false);

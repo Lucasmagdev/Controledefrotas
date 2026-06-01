@@ -4,8 +4,7 @@ import type { VehicleRecord, VehicleRecordInput } from '../types/database';
 export const vehicleService = {
   async createRecord(data: VehicleRecordInput): Promise<VehicleRecord> {
     console.log('🚀 Criando novo registro no Supabase...');
-    const { data: record, error } = await supabase
-      .from('vehicle_records')
+    const { data: record, error } = await (supabase.from('vehicle_records') as any)
       .insert(data)
       .select()
       .single();
@@ -26,8 +25,7 @@ export const vehicleService = {
     endDate?: string;
   }): Promise<VehicleRecord[]> {
     // Primeiro, buscar TODOS os registros
-    let query = supabase
-      .from('vehicle_records')
+    let query: any = (supabase.from('vehicle_records') as any)
       .select('*')
       .order('created_at', { ascending: false });
 
@@ -50,12 +48,9 @@ export const vehicleService = {
     if (error) throw error;
 
     // Filtrar através de JavaScript (mais confiável que timestamps)
-    let filtered = data || [];
+    let filtered: VehicleRecord[] = (data || []) as VehicleRecord[];
 
     if (filters?.startDate || filters?.endDate) {
-      const startDate = filters?.startDate ? new Date(filters.startDate + 'T00:00:00') : null;
-      const endDate = filters?.endDate ? new Date(filters.endDate + 'T23:59:59') : null;
-
       console.log('📅 Filtrando por data:', { startDate: filters?.startDate, endDate: filters?.endDate });
 
       filtered = filtered.filter(record => {
@@ -84,8 +79,7 @@ export const vehicleService = {
   },
 
   async getRecord(id: string): Promise<VehicleRecord | null> {
-    const { data, error } = await supabase
-      .from('vehicle_records')
+    const { data, error } = await (supabase.from('vehicle_records') as any)
       .select('*')
       .eq('id', id)
       .maybeSingle();
@@ -98,8 +92,7 @@ export const vehicleService = {
     id: string,
     data: Partial<VehicleRecordInput>
   ): Promise<VehicleRecord> {
-    const { data: record, error } = await supabase
-      .from('vehicle_records')
+    const { data: record, error } = await (supabase.from('vehicle_records') as any)
       .update({ ...data, updated_at: new Date().toISOString() })
       .eq('id', id)
       .select()
@@ -110,8 +103,7 @@ export const vehicleService = {
   },
 
   async deleteRecord(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('vehicle_records')
+    const { error } = await (supabase.from('vehicle_records') as any)
       .delete()
       .eq('id', id);
 

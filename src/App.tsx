@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
-import { FileText, Database, LogOut, BarChart3, Car } from 'lucide-react';
+import { FileText, Database, LogOut, BarChart3, Car, ClipboardCheck } from 'lucide-react';
 import { VehicleForm } from './components/VehicleForm';
 import { DatabaseView } from './components/DatabaseView';
 import { Dashboard } from './components/Dashboard';
 import { VehiclesView } from './components/VehiclesView';
+import { OperationalView } from './components/OperationalView';
 import { Toast } from './components/Toast';
 import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { Login } from './components/Login';
 import { vehicleService } from './services/vehicleService';
 import type { VehicleRecord } from './types/database';
 
-type Tab = 'form' | 'database' | 'dashboard' | 'vehicles';
+type Tab = 'form' | 'database' | 'dashboard' | 'operational' | 'vehicles';
 
 interface ToastState {
   message: string;
@@ -18,14 +19,26 @@ interface ToastState {
   show: boolean;
 }
 
+function getStartupRoute() {
+  const params = new URLSearchParams(window.location.search);
+  const tab = params.get('tab')?.toLowerCase();
+  const vehicleLookup = params.get('veiculo') || params.get('vehicle') || params.get('codigo') || params.get('code') || '';
+
+  return {
+    tab: tab === 'patio' || tab === 'pátio' || tab === 'operational' || vehicleLookup ? 'operational' : 'form',
+    vehicleLookup,
+  } satisfies { tab: Tab; vehicleLookup: string };
+}
+
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [activeTab, setActiveTab] = useState<Tab>('form');
+  const startupRoute = getStartupRoute();
+  const [activeTab, setActiveTab] = useState<Tab>(startupRoute.tab);
+  const [operationalLookup] = useState(startupRoute.vehicleLookup);
   const [toast, setToast] = useState<ToastState>({ message: '', type: 'success', show: false });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [records, setRecords] = useState<VehicleRecord[]>([]);
 
-  // Carregar registros para o dashboard
   useEffect(() => {
     if (activeTab === 'dashboard') {
       loadRecords();
@@ -41,7 +54,6 @@ function App() {
     }
   };
 
-  // Verificar autenticação ao carregar
   useEffect(() => {
     const auth = localStorage.getItem('isAuthenticated');
     if (auth === 'true') {
@@ -73,44 +85,40 @@ function App() {
     }, 1500);
   };
 
-  // Mostrar tela de login se não estiver autenticado
   if (!isAuthenticated) {
     return <Login onLogin={handleLogin} />;
   }
 
   return (
     <div className="min-h-screen gradient-mesh pb-20">
-      {/* Decorative 3D Spheres - Vibrant & Dynamic */}
       <div className="decoration-sphere decoration-sphere-1" />
       <div className="decoration-sphere decoration-sphere-2" />
       <div className="decoration-sphere decoration-sphere-3" />
       <div className="decoration-sphere decoration-sphere-4" />
       <div className="decoration-sphere decoration-sphere-5" />
       <div className="decoration-sphere decoration-sphere-6" />
-      
-      {/* Decorative Accent Elements */}
+
       <div className="decoration-accent decoration-accent-1" />
       <div className="decoration-accent decoration-accent-2" />
       <div className="decoration-accent decoration-accent-3" />
 
-      {/* Header Simplificado */}
       <div className="glass sticky top-0 z-40 border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center gap-3 animate-slide-in">
               <div className="relative">
-                <img 
-                  src="/gontijofundacoes_logo.jpg" 
-                  alt="Logo Gontijo" 
-                  className="w-12 h-12 sm:w-14 sm:h-14 object-contain" 
+                <img
+                  src="/gontijofundacoes_logo.jpg"
+                  alt="Logo Gontijo"
+                  className="w-12 h-12 sm:w-14 sm:h-14 object-contain"
                 />
               </div>
               <div>
                 <h1 className="text-lg sm:text-xl font-bold text-gray-900">
-                  Controle de Veículos
+                  Controle de Veiculos
                 </h1>
                 <p className="text-xs text-gray-500">
-                  Gestão inteligente de frotas
+                  Gestao inteligente de frotas
                 </p>
               </div>
             </div>
@@ -118,7 +126,6 @@ function App() {
         </div>
       </div>
 
-      {/* Content Area */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 mb-20">
         {activeTab === 'form' && (
           <div className="animate-fade-in">
@@ -161,6 +168,16 @@ function App() {
           </div>
         )}
 
+        {activeTab === 'operational' && (
+          <div className="animate-fade-in">
+            <OperationalView
+              initialVehicleLookup={operationalLookup}
+              onSuccess={(message) => showToast(message, 'success')}
+              onError={(message) => showToast(message, 'error')}
+            />
+          </div>
+        )}
+
         {activeTab === 'vehicles' && (
           <div className="animate-fade-in">
             <VehiclesView
@@ -179,16 +196,13 @@ function App() {
         />
       )}
 
-      {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 glass border-t border-white/20 safe-area-inset-bottom">
         <div className="max-w-xl mx-auto px-4">
-          <div className="grid grid-cols-5 gap-1 py-3">
+          <div className="grid grid-cols-6 gap-1 py-3">
             <button
               onClick={() => setActiveTab('form')}
               className={`flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all duration-200 ${
-                activeTab === 'form'
-                  ? 'text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                activeTab === 'form' ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               <FileText className={`w-6 h-6 ${activeTab === 'form' ? 'stroke-[2.5]' : 'stroke-2'}`} />
@@ -197,9 +211,7 @@ function App() {
             <button
               onClick={() => setActiveTab('database')}
               className={`flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all duration-200 ${
-                activeTab === 'database'
-                  ? 'text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                activeTab === 'database' ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               <Database className={`w-6 h-6 ${activeTab === 'database' ? 'stroke-[2.5]' : 'stroke-2'}`} />
@@ -208,24 +220,29 @@ function App() {
             <button
               onClick={() => setActiveTab('dashboard')}
               className={`flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all duration-200 ${
-                activeTab === 'dashboard'
-                  ? 'text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                activeTab === 'dashboard' ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               <BarChart3 className={`w-6 h-6 ${activeTab === 'dashboard' ? 'stroke-[2.5]' : 'stroke-2'}`} />
-              <span className="text-xs font-medium">Relatórios</span>
+              <span className="text-xs font-medium">Relatorios</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('operational')}
+              className={`flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all duration-200 ${
+                activeTab === 'operational' ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <ClipboardCheck className={`w-6 h-6 ${activeTab === 'operational' ? 'stroke-[2.5]' : 'stroke-2'}`} />
+              <span className="text-xs font-medium">Patio</span>
             </button>
             <button
               onClick={() => setActiveTab('vehicles')}
               className={`flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-all duration-200 ${
-                activeTab === 'vehicles'
-                  ? 'text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
+                activeTab === 'vehicles' ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               <Car className={`w-6 h-6 ${activeTab === 'vehicles' ? 'stroke-[2.5]' : 'stroke-2'}`} />
-              <span className="text-xs font-medium">Veículos</span>
+              <span className="text-xs font-medium">Veiculos</span>
             </button>
             <button
               onClick={handleLogout}

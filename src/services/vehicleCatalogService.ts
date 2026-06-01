@@ -16,7 +16,7 @@ export const vehicleCatalogService = {
     if (filters?.search) {
       const sanitizedSearch = filters.search.trim();
       if (sanitizedSearch) {
-        query = query.or(`plate.ilike.%${sanitizedSearch}%,name.ilike.%${sanitizedSearch}%`);
+        query = query.or(`plate.ilike.%${sanitizedSearch}%,name.ilike.%${sanitizedSearch}%,short_code.ilike.%${sanitizedSearch}%`);
       }
     }
 
