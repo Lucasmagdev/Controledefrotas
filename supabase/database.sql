@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS public.vehicle_records (
   vehicle_plate text NOT NULL,
   reason text NOT NULL,
   authorized_by text NOT NULL,
+  usage_type text NOT NULL DEFAULT 'Comum'
+    CHECK (usage_type IN ('Comum', 'Rota')),
   
   -- Informações de Retirada
   pickup_date date NOT NULL,

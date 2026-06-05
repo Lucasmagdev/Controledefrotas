@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS public.vehicles (
   plate text NOT NULL,
   name text NOT NULL,
   responsible_name text DEFAULT '',
+  usage_type text NOT NULL DEFAULT 'Comum'
+    CHECK (usage_type IN ('Comum', 'Rota')),
   status text NOT NULL DEFAULT 'Ativo'
     CHECK (status IN ('Ativo', 'Inativo', 'Em Manut.')),
   created_at timestamptz DEFAULT now(),
@@ -21,6 +23,9 @@ CREATE INDEX IF NOT EXISTS idx_vehicles_status
 
 CREATE INDEX IF NOT EXISTS idx_vehicles_name
   ON public.vehicles (name);
+
+CREATE INDEX IF NOT EXISTS idx_vehicles_usage_type
+  ON public.vehicles (usage_type);
 
 DROP TRIGGER IF EXISTS update_vehicles_updated_at ON public.vehicles;
 CREATE TRIGGER update_vehicles_updated_at

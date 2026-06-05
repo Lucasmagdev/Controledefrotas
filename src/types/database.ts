@@ -26,6 +26,7 @@ export type Json =
   | Json[];
 
 export type VehicleStatus = 'Ativo' | 'Inativo' | 'Em Manut.';
+export type VehicleUsageType = 'Comum' | 'Rota';
 export type OperationType = 'Obras' | 'Trajeto curto' | 'Viagem';
 export type MovementStatus = 'Em aberto' | 'Concluida';
 export type FuelLevel = 'Reserva' | '1/4' | '1/2' | '3/4' | 'Cheio';
@@ -37,6 +38,7 @@ export interface FleetVehicle {
   plate: string;
   name: string;
   responsible_name: string;
+  usage_type: VehicleUsageType;
   status: VehicleStatus;
   created_at: string;
   updated_at: string;
@@ -46,6 +48,7 @@ export interface FleetVehicleInput {
   plate: string;
   name: string;
   responsible_name: string;
+  usage_type: VehicleUsageType;
   status: VehicleStatus;
 }
 
@@ -149,6 +152,7 @@ export interface Database {
           plate: string;
           name: string;
           responsible_name?: string;
+          usage_type?: VehicleUsageType;
           status: VehicleStatus;
           created_at?: string;
           updated_at?: string;
@@ -158,6 +162,7 @@ export interface Database {
           plate?: string;
           name?: string;
           responsible_name?: string;
+          usage_type?: VehicleUsageType;
           status?: VehicleStatus;
           updated_at?: string;
         };

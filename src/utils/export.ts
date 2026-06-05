@@ -1,23 +1,30 @@
 import type { VehicleRecord, FleetVehicle } from '../types/database';
 import { formatDateBR } from './date';
 
-export function exportToCSV(records: VehicleRecord[]) {
+function getVehicleByPlate(vehicles: FleetVehicle[], vehiclePlate: string) {
+  const normalizedPlate = vehiclePlate.trim().toUpperCase();
+  return vehicles.find((vehicle) => vehicle.plate.trim().toUpperCase() === normalizedPlate);
+}
+
+export function exportToCSV(records: VehicleRecord[], vehicles: FleetVehicle[] = []) {
   const headers = [
-    'Placa/Veículo',
+    'Placa/Veiculo',
+    'Tipo de Uso',
     'Motivo',
-    'Autorização',
+    'Autorizacao',
     'Data Retirada',
     'Hora Retirada',
     'Nome Retirada',
-    'Data Devolução',
-    'Hora Devolução',
-    'Nome Devolução',
+    'Data Devolucao',
+    'Hora Devolucao',
+    'Nome Devolucao',
     'Status',
-    'Observações',
+    'Observacoes',
   ];
 
   const rows = records.map((record) => [
     record.vehicle_plate,
+    getVehicleByPlate(vehicles, record.vehicle_plate)?.usage_type || 'Comum',
     record.reason,
     record.authorized_by,
     formatDateBR(record.pickup_date, ''),
@@ -40,10 +47,7 @@ export function exportToCSV(records: VehicleRecord[]) {
   const url = URL.createObjectURL(blob);
 
   link.setAttribute('href', url);
-  link.setAttribute(
-    'download',
-    `controle-veiculos-${new Date().toISOString().split('T')[0]}.csv`
-  );
+  link.setAttribute('download', `controle-veiculos-${new Date().toISOString().split('T')[0]}.csv`);
   link.style.visibility = 'hidden';
 
   document.body.appendChild(link);
@@ -52,10 +56,19 @@ export function exportToCSV(records: VehicleRecord[]) {
 }
 
 export function exportDailyUtilizationExcel(records: VehicleRecord[], vehicles: FleetVehicle[] = []) {
-  // Preparar dados dos registros de uso
-  const recordHeaders = ['Placa', 'Status', 'Motorista (Uso)', 'Data', 'Hora Retirada', 'Hora Devolução'];
+  const recordHeaders = [
+    'Placa',
+    'Tipo de Uso',
+    'Status',
+    'Motorista (Uso)',
+    'Data',
+    'Hora Retirada',
+    'Hora Devolucao',
+  ];
+
   const recordRows = records.map((record) => [
     record.vehicle_plate,
+    getVehicleByPlate(vehicles, record.vehicle_plate)?.usage_type || 'Comum',
     record.status,
     record.pickup_name,
     formatDateBR(record.pickup_date),
@@ -63,9 +76,9 @@ export function exportDailyUtilizationExcel(records: VehicleRecord[], vehicles: 
     record.return_time || '-',
   ]);
 
-  // Preparar dados dos veículos cadastrados
   const vehicleRows = vehicles.map((vehicle) => [
     vehicle.plate,
+    vehicle.usage_type,
     vehicle.status,
     vehicle.responsible_name || '-',
     formatDateBR(vehicle.created_at),
@@ -73,19 +86,10 @@ export function exportDailyUtilizationExcel(records: VehicleRecord[], vehicles: 
     '-',
   ]);
 
-  // Combinar headers
-  const headers = recordHeaders;
-  
-  // Combinar todos os dados
-  const allRows = [
-    ...recordRows,
-    ...vehicleRows,
-  ];
-
-  // Usar ponto-e-vírgula como separador (padrão Excel em regiões pt-BR)
   const csvContent = [
-    headers.join(';'),
-    ...allRows.map((row) => row.map((cell) => `"${cell}"`).join(';')),
+    recordHeaders.join(';'),
+    ...recordRows.map((row) => row.map((cell) => `"${cell}"`).join(';')),
+    ...vehicleRows.map((row) => row.map((cell) => `"${cell}"`).join(';')),
   ].join('\n');
 
   const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -93,10 +97,7 @@ export function exportDailyUtilizationExcel(records: VehicleRecord[], vehicles: 
   const url = URL.createObjectURL(blob);
 
   link.setAttribute('href', url);
-  link.setAttribute(
-    'download',
-    `utilizacao-diaria-${new Date().toISOString().split('T')[0]}.csv`
-  );
+  link.setAttribute('download', `utilizacao-diaria-${new Date().toISOString().split('T')[0]}.csv`);
   link.style.visibility = 'hidden';
 
   document.body.appendChild(link);
@@ -104,19 +105,21 @@ export function exportDailyUtilizationExcel(records: VehicleRecord[], vehicles: 
   document.body.removeChild(link);
 }
 
-export function generatePrintReport(records: VehicleRecord[], filters?: {
-  startDate?: string;
-  endDate?: string;
-  status?: string;
-}) {
+export function generatePrintReport(
+  records: VehicleRecord[],
+  vehicles: FleetVehicle[] = [],
+  filters?: {
+    startDate?: string;
+    endDate?: string;
+    status?: string;
+  }
+) {
   const printWindow = window.open('', '_blank');
   if (!printWindow) return;
 
-  const filterInfo = [];
+  const filterInfo: string[] = [];
   if (filters?.startDate) {
-    filterInfo.push(
-      `Data inicial: ${formatDateBR(filters.startDate)}`
-    );
+    filterInfo.push(`Data inicial: ${formatDateBR(filters.startDate)}`);
   }
   if (filters?.endDate) {
     filterInfo.push(`Data final: ${formatDateBR(filters.endDate)}`);
@@ -125,11 +128,14 @@ export function generatePrintReport(records: VehicleRecord[], filters?: {
     filterInfo.push(`Status: ${filters.status}`);
   }
 
+  const getRecordUsageType = (vehiclePlate: string) =>
+    getVehicleByPlate(vehicles, vehiclePlate)?.usage_type || 'Comum';
+
   const html = `
     <!DOCTYPE html>
     <html>
     <head>
-      <title>Relatório de Controle de Veículos</title>
+      <title>Relatorio de Controle de Veiculos</title>
       <style>
         body {
           font-family: Arial, sans-serif;
@@ -221,7 +227,7 @@ export function generatePrintReport(records: VehicleRecord[], filters?: {
     </head>
     <body>
       <div class="header">
-        <h1>Relatório de Controle de Veículos</h1>
+        <h1>Relatorio de Controle de Veiculos</h1>
         <p>Gerado em: ${new Date().toLocaleString('pt-BR')}</p>
       </div>
 
@@ -254,11 +260,12 @@ export function generatePrintReport(records: VehicleRecord[], filters?: {
       <table>
         <thead>
           <tr>
-            <th>Placa/Veículo</th>
+            <th>Placa/Veiculo</th>
+            <th>Tipo de Uso</th>
             <th>Motivo</th>
             <th>Data/Hora Retirada</th>
             <th>Nome Retirada</th>
-            <th>Data/Hora Devolução</th>
+            <th>Data/Hora Devolucao</th>
             <th>Status</th>
           </tr>
         </thead>
@@ -268,6 +275,7 @@ export function generatePrintReport(records: VehicleRecord[], filters?: {
               (record) => `
             <tr>
               <td>${record.vehicle_plate}</td>
+              <td>${getRecordUsageType(record.vehicle_plate)}</td>
               <td>${record.reason}</td>
               <td>${formatDateBR(record.pickup_date)} ${record.pickup_time}</td>
               <td>${record.pickup_name}</td>

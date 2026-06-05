@@ -353,6 +353,7 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
                   {displayedVehicles.map((vehicle) => (
                     <option key={vehicle.id} value={vehicle.plate}>
                       {vehicle.plate} - {vehicle.name}
+                      {vehicle.usage_type === 'Rota' ? ' [Rota]' : ''}
                       {vehicle.responsible_name ? ` (${vehicle.responsible_name})` : ''}
                     </option>
                   ))}

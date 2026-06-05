@@ -1,9 +1,13 @@
 import { supabase } from '../lib/supabase';
-import type { FleetVehicle, FleetVehicleInput, VehicleStatus } from '../types/database';
+import type { FleetVehicle, FleetVehicleInput, VehicleStatus, VehicleUsageType } from '../types/database';
 
 interface VehicleFilters {
   search?: string;
   status?: VehicleStatus | 'Todos';
+}
+
+function normalizeUsageType(value?: string): VehicleUsageType {
+  return value === 'Rota' ? 'Rota' : 'Comum';
 }
 
 export const vehicleCatalogService = {
@@ -38,6 +42,7 @@ export const vehicleCatalogService = {
       ...input,
       plate: input.plate.trim().toUpperCase(),
       name: input.name.trim(),
+      usage_type: normalizeUsageType(input.usage_type),
     };
 
     const { data, error } = await supabase
@@ -58,6 +63,7 @@ export const vehicleCatalogService = {
       ...input,
       ...(input.plate ? { plate: input.plate.trim().toUpperCase() } : {}),
       ...(input.name ? { name: input.name.trim() } : {}),
+      ...(input.usage_type ? { usage_type: normalizeUsageType(input.usage_type) } : {}),
     };
 
     const { data, error } = await supabase

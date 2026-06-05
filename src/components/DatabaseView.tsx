@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Search, Filter, Download, Printer, Eye, Edit2, Trash2, BarChart3, TrendingUp, CheckCircle2, Plus, FileSpreadsheet, LogIn } from 'lucide-react';
 import { vehicleService } from '../services/vehicleService';
 import { vehicleCatalogService } from '../services/vehicleCatalogService';
@@ -7,7 +7,7 @@ import { Modal } from './Modal';
 import { VehicleForm } from './VehicleForm';
 import { exportToCSV, exportDailyUtilizationExcel, generatePrintReport } from '../utils/export';
 import { formatDateBR, getDateKey, toDateInputValue } from '../utils/date';
-import type { VehicleRecord, FleetVehicle, VehicleRecordInput } from '../types/database';
+import type { VehicleRecord, FleetVehicle, VehicleRecordInput, VehicleUsageType } from '../types/database';
 
 interface DatabaseViewProps {
   onSuccess: (message: string) => void;
@@ -18,6 +18,7 @@ interface DatabaseViewProps {
 export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseViewProps) {
   const [filteredRecords, setFilteredRecords] = useState<VehicleRecord[]>([]);
   const [filteredVehicles, setFilteredVehicles] = useState<FleetVehicle[]>([]);
+  const [allVehicles, setAllVehicles] = useState<FleetVehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('Todos');
@@ -54,6 +55,7 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
   const loadVehiclesByDate = async () => {
     try {
       const allVehicles = await vehicleCatalogService.listVehicles();
+      setAllVehicles(allVehicles);
       console.log('📊 Veículos carregados:', allVehicles);
       
       if (vehicleFilterStart) {
@@ -117,17 +119,33 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
   };
 
   const handleExport = () => {
-    exportToCSV(filteredRecords);
+    exportToCSV(filteredRecords, allVehicles);
     onSuccess('Relatório exportado com sucesso');
   };
 
   const handleDailyUtilizationExport = () => {
-    exportDailyUtilizationExcel(filteredRecords, filteredVehicles);
+    exportDailyUtilizationExcel(filteredRecords, allVehicles);
     onSuccess('Utilização diária exportada com sucesso');
   };
 
   const handlePrint = () => {
-    generatePrintReport(filteredRecords, { startDate: recordFilterStart, endDate: recordFilterEnd, status: statusFilter });
+    generatePrintReport(filteredRecords, allVehicles, {
+      startDate: recordFilterStart,
+      endDate: recordFilterEnd,
+      status: statusFilter,
+    });
+  };
+
+  const vehicleByPlate = useMemo(() => {
+    const map = new Map<string, FleetVehicle>();
+    allVehicles.forEach((vehicle) => {
+      map.set(vehicle.plate.trim().toUpperCase(), vehicle);
+    });
+    return map;
+  }, [allVehicles]);
+
+  const getVehicleUsageType = (vehiclePlate: string): VehicleUsageType => {
+    return vehicleByPlate.get(vehiclePlate.trim().toUpperCase())?.usage_type || 'Comum';
   };
 
   const stats = {
@@ -298,7 +316,7 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
           {/* Tabela Desktop Premium */}
           <div className="hidden md:block glass rounded-2xl shadow-premium overflow-hidden animate-fade-in">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[980px]">
+              <table className="w-full min-w-[1080px]">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
@@ -312,6 +330,9 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                       Status
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Tipo de Uso
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                       Data/Hora Devolução
@@ -354,6 +375,17 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
                           }`}
                         >
                           {record.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full ${
+                            getVehicleUsageType(record.vehicle_plate) === 'Rota'
+                              ? 'bg-purple-100 text-purple-700'
+                              : 'bg-blue-100 text-blue-700'
+                          }`}
+                        >
+                          {getVehicleUsageType(record.vehicle_plate)}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -440,6 +472,15 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
                     }`}
                   >
                     {record.status}
+                  </span>
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full ${
+                      getVehicleUsageType(record.vehicle_plate) === 'Rota'
+                        ? 'bg-purple-100 text-purple-700'
+                        : 'bg-blue-100 text-blue-700'
+                    }`}
+                  >
+                    {getVehicleUsageType(record.vehicle_plate)}
                   </span>
                 </div>
                 
@@ -605,6 +646,13 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
                           : 'bg-yellow-100 text-yellow-700'
                       }`}>
                         {vehicle.status}
+                      </span>
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                        vehicle.usage_type === 'Rota'
+                          ? 'bg-purple-100 text-purple-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {vehicle.usage_type}
                       </span>
                     </div>
                     <p className="text-sm text-gray-700 font-medium mb-1">{vehicle.name}</p>
