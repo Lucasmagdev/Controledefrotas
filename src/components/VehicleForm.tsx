@@ -15,6 +15,7 @@ interface VehicleFormProps {
 }
 const REASON_SUGGESTIONS = ['Visita tecnica', 'Entrega', 'Reuniao', 'Manutencao', 'Outro'];
 const AUTHORIZATION_SUGGESTIONS = ['Gestor', 'Diretoria', 'RH', 'Coordenacao', 'Outro'];
+const USAGE_OPTIONS: Array<VehicleRecordInput['usage_type']> = ['Comum', 'Rota'];
 
 function normalizeSearchValue(value: string) {
   return value
@@ -32,6 +33,7 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
     vehicle_plate: editData?.vehicle_plate || '',
     reason: editData?.reason || '',
     authorized_by: editData?.authorized_by || '',
+    usage_type: editData?.usage_type || 'Comum',
     pickup_date: editData?.pickup_date || '',
     pickup_time: editData?.pickup_time || '',
     pickup_name: editData?.pickup_name || '',
@@ -69,13 +71,14 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
   }, []);
 
   const filteredVehicles = useMemo(() => {
+    const availableVehicles = vehicles.filter((vehicle) => vehicle.in_patio);
     const normalizedSearch = normalizeSearchValue(vehicleSearch);
 
     if (!normalizedSearch) {
-      return vehicles;
+      return availableVehicles;
     }
 
-    return vehicles.filter((vehicle) => {
+    return availableVehicles.filter((vehicle) => {
       const searchableText = normalizeSearchValue(
         `${vehicle.plate} ${vehicle.name} ${vehicle.responsible_name || ''}`
       );
@@ -99,6 +102,30 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
     return [selectedVehicle, ...filteredVehicles];
   }, [filteredVehicles, formData.vehicle_plate, vehicles]);
 
+  const availableVehicleCount = useMemo(
+    () => vehicles.filter((vehicle) => vehicle.in_patio).length,
+    [vehicles]
+  );
+
+  useEffect(() => {
+    if (isReturnMode || !formData.vehicle_plate) {
+      return;
+    }
+
+    const selectedVehicle = vehicles.find((vehicle) => vehicle.plate === formData.vehicle_plate);
+
+    if (!selectedVehicle) {
+      return;
+    }
+
+    if (formData.usage_type !== selectedVehicle.usage_type) {
+      setFormData((prev) => ({
+        ...prev,
+        usage_type: selectedVehicle.usage_type,
+      }));
+    }
+  }, [formData.vehicle_plate, formData.usage_type, isReturnMode, vehicles]);
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -106,6 +133,7 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
       if (!formData.vehicle_plate.trim()) newErrors.vehicle_plate = 'Veiculo e obrigatorio';
       if (!formData.reason.trim()) newErrors.reason = 'Motivo e obrigatorio';
       if (!formData.authorized_by.trim()) newErrors.authorized_by = 'Autorizacao e obrigatoria';
+      if (!formData.usage_type) newErrors.usage_type = 'Selecione o tipo de uso';
       if (!formData.pickup_date) newErrors.pickup_date = 'Data de retirada e obrigatoria';
       if (!formData.pickup_time) newErrors.pickup_time = 'Hora de retirada e obrigatoria';
       if (!formData.pickup_name.trim()) newErrors.pickup_name = 'Nome de retirada e obrigatorio';
@@ -119,6 +147,7 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
       if (!formData.vehicle_plate.trim()) newErrors.vehicle_plate = 'Veiculo e obrigatorio';
       if (!formData.reason.trim()) newErrors.reason = 'Motivo e obrigatorio';
       if (!formData.authorized_by.trim()) newErrors.authorized_by = 'Autorizacao e obrigatoria';
+      if (!formData.usage_type) newErrors.usage_type = 'Selecione o tipo de uso';
       if (!formData.pickup_date) newErrors.pickup_date = 'Data de retirada e obrigatoria';
       if (!formData.pickup_time) newErrors.pickup_time = 'Hora de retirada e obrigatoria';
       if (!formData.pickup_name.trim()) newErrors.pickup_name = 'Nome de retirada e obrigatorio';
@@ -169,9 +198,24 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
             ? 'Devolvido'
             : 'Em uso';
 
+      const usageType = formData.usage_type || 'Comum';
+      const nextVehiclePlate = formData.vehicle_plate.trim().toUpperCase();
+      const previousVehiclePlate = editData?.vehicle_plate?.trim().toUpperCase() || '';
+
+      const syncVehiclePatioStatus = async (vehiclePlate: string, inPatio: boolean) => {
+        const targetVehicle = vehicles.find((vehicle) => vehicle.plate.trim().toUpperCase() === vehiclePlate);
+
+        if (!targetVehicle || targetVehicle.in_patio === inPatio) {
+          return;
+        }
+
+        await vehicleCatalogService.updatePatioStatus(targetVehicle.id, inPatio);
+      };
+
       if (editData?.id) {
         const updatePayload: Partial<VehicleRecordInput> = isReturnMode
           ? {
+              usage_type: usageType,
               return_date: formData.return_date || undefined,
               return_time: formData.return_time || undefined,
               return_name: formData.return_name || undefined,
@@ -183,6 +227,7 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
               vehicle_plate: formData.vehicle_plate,
               reason: formData.reason,
               authorized_by: formData.authorized_by,
+              usage_type: usageType,
               pickup_date: formData.pickup_date,
               pickup_time: formData.pickup_time,
               pickup_name: formData.pickup_name,
@@ -201,6 +246,7 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
           vehicle_plate: formData.vehicle_plate,
           reason: formData.reason,
           authorized_by: formData.authorized_by,
+          usage_type: usageType,
           pickup_date: formData.pickup_date,
           pickup_time: formData.pickup_time,
           pickup_name: formData.pickup_name,
@@ -211,6 +257,12 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
 
         await vehicleService.createRecord(createPayload);
       }
+
+      if (previousVehiclePlate && previousVehiclePlate !== nextVehiclePlate) {
+        await syncVehiclePatioStatus(previousVehiclePlate, true);
+      }
+
+      await syncVehiclePatioStatus(nextVehiclePlate, status !== 'Em uso');
 
       onSuccess();
 
@@ -230,6 +282,7 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
       vehicle_plate: '',
       reason: '',
       authorized_by: '',
+      usage_type: 'Comum',
       pickup_date: '',
       pickup_time: '',
       pickup_name: '',
@@ -341,7 +394,12 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
                 <select
                   value={formData.vehicle_plate}
                   onChange={(e) => {
-                    setFormData((prev) => ({ ...prev, vehicle_plate: e.target.value }));
+                    const selectedVehicle = vehicles.find((vehicle) => vehicle.plate === e.target.value);
+                    setFormData((prev) => ({
+                      ...prev,
+                      vehicle_plate: e.target.value,
+                      usage_type: selectedVehicle?.usage_type || 'Comum',
+                    }));
                     if (errors.vehicle_plate) setErrors((prev) => ({ ...prev, vehicle_plate: '' }));
                   }}
                   disabled={isReturnMode}
@@ -360,10 +418,39 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
                 </select>
 
                 <p className="text-xs text-gray-500">
-                  {filteredVehicles.length === vehicles.length && !vehicleSearch.trim()
-                    ? `${vehicles.length} veiculo(s) disponivel(is)`
+                  {filteredVehicles.length === availableVehicleCount && !vehicleSearch.trim()
+                    ? `${availableVehicleCount} veiculo(s) disponivel(is)`
                     : `${filteredVehicles.length} resultado(s) para "${vehicleSearch.trim()}"`}
                 </p>
+
+                <div className="space-y-2 rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-4">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <span className="text-sm font-semibold text-gray-700">Tipo de uso</span>
+                    <span className="text-xs text-gray-500">
+                      Sugestão automática, mas você pode ajustar.
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {USAGE_OPTIONS.map((usageType) => (
+                      <button
+                        key={usageType}
+                        type="button"
+                        onClick={() => {
+                          setFormData((prev) => ({ ...prev, usage_type: usageType }));
+                          if (errors.usage_type) setErrors((prev) => ({ ...prev, usage_type: '' }));
+                        }}
+                        className={`rounded-xl px-4 py-3 text-sm font-semibold border transition-all ${
+                          formData.usage_type === usageType
+                            ? 'bg-purple-600 text-white border-transparent shadow-premium-colored'
+                            : 'bg-white text-gray-700 border-gray-200 hover:border-purple-300'
+                        }`}
+                      >
+                        {usageType}
+                      </button>
+                    ))}
+                  </div>
+                  {errors.usage_type && <p className="text-sm text-red-600 font-medium">{errors.usage_type}</p>}
+                </div>
               </div>
             )}
             {errors.vehicle_plate && <p className="mt-2 text-sm text-red-600 font-medium">{errors.vehicle_plate}</p>}

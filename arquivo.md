@@ -102,6 +102,7 @@ Campos principais:
 - `vehicle_plate` (text)
 - `reason` (text)
 - `authorized_by` (text)
+- `usage_type` (text, snapshot do tipo de uso no momento da retirada)
 - `pickup_date` (date)
 - `pickup_time` (time)
 - `pickup_name` (text)

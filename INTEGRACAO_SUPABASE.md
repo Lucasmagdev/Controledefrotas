@@ -57,7 +57,7 @@ O arquivo `supabase/database.sql` contém:
 
 ```sql
 ✅ EXTENSÃO: uuid-ossp para gerar UUIDs
-✅ TABELA: vehicle_records com 17 colunas estruturadas
+✅ TABELA: vehicle_records com 18 colunas estruturadas
 ✅ ÍNDICES: 4 índices para otimizar queries
 ✅ FUNÇÃO: update_updated_at_column() 
 ✅ TRIGGER: atualizar updated_at automaticamente
@@ -90,6 +90,7 @@ VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 | `vehicle_plate` | text | Placa do veículo |
 | `reason` | text | Motivo da utilização |
 | `authorized_by` | text | Quem autorizou |
+| `usage_type` | text | Tipo de uso salvo no momento da retirada |
 | `pickup_date` | date | Data de retirada |
 | `pickup_time` | time | Hora de retirada |
 | `pickup_name` | text | Nome de quem retirou |

@@ -6,6 +6,10 @@ function getVehicleByPlate(vehicles: FleetVehicle[], vehiclePlate: string) {
   return vehicles.find((vehicle) => vehicle.plate.trim().toUpperCase() === normalizedPlate);
 }
 
+function getRecordUsageType(record: VehicleRecord, vehicles: FleetVehicle[] = []) {
+  return record.usage_type || getVehicleByPlate(vehicles, record.vehicle_plate)?.usage_type || 'Comum';
+}
+
 export function exportToCSV(records: VehicleRecord[], vehicles: FleetVehicle[] = []) {
   const headers = [
     'Placa/Veiculo',
@@ -24,7 +28,7 @@ export function exportToCSV(records: VehicleRecord[], vehicles: FleetVehicle[] =
 
   const rows = records.map((record) => [
     record.vehicle_plate,
-    getVehicleByPlate(vehicles, record.vehicle_plate)?.usage_type || 'Comum',
+    getRecordUsageType(record, vehicles),
     record.reason,
     record.authorized_by,
     formatDateBR(record.pickup_date, ''),
@@ -68,7 +72,7 @@ export function exportDailyUtilizationExcel(records: VehicleRecord[], vehicles: 
 
   const recordRows = records.map((record) => [
     record.vehicle_plate,
-    getVehicleByPlate(vehicles, record.vehicle_plate)?.usage_type || 'Comum',
+    getRecordUsageType(record, vehicles),
     record.status,
     record.pickup_name,
     formatDateBR(record.pickup_date),
@@ -127,9 +131,6 @@ export function generatePrintReport(
   if (filters?.status && filters.status !== 'Todos') {
     filterInfo.push(`Status: ${filters.status}`);
   }
-
-  const getRecordUsageType = (vehiclePlate: string) =>
-    getVehicleByPlate(vehicles, vehiclePlate)?.usage_type || 'Comum';
 
   const html = `
     <!DOCTYPE html>
@@ -275,7 +276,7 @@ export function generatePrintReport(
               (record) => `
             <tr>
               <td>${record.vehicle_plate}</td>
-              <td>${getRecordUsageType(record.vehicle_plate)}</td>
+              <td>${getRecordUsageType(record, vehicles)}</td>
               <td>${record.reason}</td>
               <td>${formatDateBR(record.pickup_date)} ${record.pickup_time}</td>
               <td>${record.pickup_name}</td>

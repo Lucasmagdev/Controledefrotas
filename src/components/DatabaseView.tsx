@@ -148,6 +148,10 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
     return vehicleByPlate.get(vehiclePlate.trim().toUpperCase())?.usage_type || 'Comum';
   };
 
+  const getRecordUsageType = (record: VehicleRecord): VehicleUsageType => {
+    return record.usage_type || getVehicleUsageType(record.vehicle_plate);
+  };
+
   const stats = {
     total: filteredRecords.length,
     inUse: filteredRecords.filter((r) => r.status === 'Em uso').length,
@@ -159,6 +163,7 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
     vehicle_plate: record.vehicle_plate,
     reason: record.reason,
     authorized_by: record.authorized_by,
+    usage_type: getRecordUsageType(record),
     pickup_date: record.pickup_date,
     pickup_time: record.pickup_time,
     pickup_name: record.pickup_name,
@@ -380,12 +385,12 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full ${
-                            getVehicleUsageType(record.vehicle_plate) === 'Rota'
+                            getRecordUsageType(record) === 'Rota'
                               ? 'bg-purple-100 text-purple-700'
                               : 'bg-blue-100 text-blue-700'
                           }`}
                         >
-                          {getVehicleUsageType(record.vehicle_plate)}
+                          {getRecordUsageType(record)}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -475,12 +480,12 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
                   </span>
                   <span
                     className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full ${
-                      getVehicleUsageType(record.vehicle_plate) === 'Rota'
+                      getRecordUsageType(record) === 'Rota'
                         ? 'bg-purple-100 text-purple-700'
                         : 'bg-blue-100 text-blue-700'
                     }`}
                   >
-                    {getVehicleUsageType(record.vehicle_plate)}
+                    {getRecordUsageType(record)}
                   </span>
                 </div>
                 

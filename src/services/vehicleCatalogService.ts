@@ -4,6 +4,7 @@ import type { FleetVehicle, FleetVehicleInput, VehicleStatus, VehicleUsageType }
 interface VehicleFilters {
   search?: string;
   status?: VehicleStatus | 'Todos';
+  inPatio?: boolean;
 }
 
 function normalizeUsageType(value?: string): VehicleUsageType {
@@ -26,6 +27,10 @@ export const vehicleCatalogService = {
 
     if (filters?.status && filters.status !== 'Todos') {
       query = query.eq('status', filters.status);
+    }
+
+    if (typeof filters?.inPatio === 'boolean') {
+      query = query.eq('in_patio', filters.inPatio);
     }
 
     const { data, error } = await query;
@@ -69,6 +74,21 @@ export const vehicleCatalogService = {
     const { data, error } = await supabase
       .from('vehicles')
       .update({ ...normalizedInput, updated_at: new Date().toISOString() } as never)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
+  },
+
+  async updatePatioStatus(id: string, inPatio: boolean): Promise<FleetVehicle> {
+    const { data, error } = await supabase
+      .from('vehicles')
+      .update({ in_patio: inPatio, updated_at: new Date().toISOString() } as never)
       .eq('id', id)
       .select()
       .single();

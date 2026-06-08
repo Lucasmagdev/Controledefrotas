@@ -31,6 +31,10 @@ export function RecordDetails({ record, isOpen, onClose }: RecordDetailsProps) {
                 <p className="text-gray-800">{record.authorized_by}</p>
               </div>
               <div>
+                <span className="font-medium text-gray-600">Tipo de uso:</span>
+                <p className="text-gray-800">{record.usage_type || 'Comum'}</p>
+              </div>
+              <div>
                 <span className="font-medium text-gray-600">Status:</span>
                 <span
                   className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${

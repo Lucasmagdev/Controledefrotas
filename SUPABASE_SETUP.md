@@ -98,6 +98,7 @@ Armazena todos os registros de retirada e devolução de veículos.
 - `vehicle_plate` - Placa do veículo
 - `reason` - Motivo da utilização
 - `authorized_by` - Quem autorizou
+- `usage_type` - Tipo de uso salvo no momento da retirada
 - `pickup_date`, `pickup_time` - Data e hora de retirada
 - `pickup_name`, `pickup_signature` - Responsável e assinatura de retirada
 - `return_date`, `return_time` - Data e hora de devolução (opcional)

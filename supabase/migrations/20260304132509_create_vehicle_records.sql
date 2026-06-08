@@ -7,6 +7,7 @@
       - `vehicle_plate` (text) - Vehicle plate or identification
       - `reason` (text) - Reason for vehicle use
       - `authorized_by` (text) - Authorization source
+      - `usage_type` (text) - Usage type snapshot: "Comum" or "Rota"
       - `pickup_date` (date) - Pickup date
       - `pickup_time` (time) - Pickup time
       - `pickup_name` (text) - Name of person picking up
@@ -30,6 +31,7 @@ CREATE TABLE IF NOT EXISTS vehicle_records (
   vehicle_plate text NOT NULL,
   reason text NOT NULL,
   authorized_by text NOT NULL,
+  usage_type text NOT NULL DEFAULT 'Comum',
   pickup_date date NOT NULL,
   pickup_time time NOT NULL,
   pickup_name text NOT NULL,

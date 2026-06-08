@@ -3,6 +3,7 @@ export interface VehicleRecord {
   vehicle_plate: string;
   reason: string;
   authorized_by: string;
+  usage_type?: VehicleUsageType;
   pickup_date: string;
   pickup_time: string;
   pickup_name: string;
@@ -129,6 +130,7 @@ export interface VehicleRecordInput {
   vehicle_plate: string;
   reason: string;
   authorized_by: string;
+  usage_type?: VehicleUsageType;
   pickup_date: string;
   pickup_time: string;
   pickup_name: string;
