@@ -4,9 +4,11 @@ import {
   CalendarDays,
   Camera,
   ClipboardCheck,
+  Edit2,
   Plus,
   ShieldAlert,
   Timer,
+  Save,
   Trash2,
   Truck,
   Users,
@@ -59,6 +61,17 @@ const CHECKLIST_ITEMS = [
 
 const FUEL_OPTIONS: FuelLevel[] = ['Reserva', '1/4', '1/2', '3/4', 'Cheio'];
 const OPERATION_OPTIONS: OperationType[] = ['Obras', 'Trajeto curto', 'Viagem'];
+const VEHICLE_STATUS_OPTIONS = ['Ativo', 'Inativo', 'Em Manut.'] as const;
+const VEHICLE_USAGE_OPTIONS = ['Comum', 'Rota'] as const;
+
+type PatioVehicleEditForm = {
+  plate: string;
+  name: string;
+  responsible_name: string;
+  status: (typeof VEHICLE_STATUS_OPTIONS)[number];
+  usage_type: (typeof VEHICLE_USAGE_OPTIONS)[number];
+  in_patio: boolean;
+};
 
 function normalizeText(value: string) {
   return value
@@ -217,6 +230,17 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
   const [initialLookupHandled, setInitialLookupHandled] = useState(false);
   const [message, setMessage] = useState('');
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [vehicleToEdit, setVehicleToEdit] = useState<FleetVehicle | null>(null);
+  const [vehicleEditForm, setVehicleEditForm] = useState<PatioVehicleEditForm>({
+    plate: '',
+    name: '',
+    responsible_name: '',
+    status: 'Ativo',
+    usage_type: 'Comum',
+    in_patio: true,
+  });
+  const [vehicleEditErrors, setVehicleEditErrors] = useState<Partial<Record<keyof PatioVehicleEditForm, string>>>({});
+  const [vehicleEditSaving, setVehicleEditSaving] = useState(false);
 
   const [selectedVehicleId, setSelectedVehicleId] = useState('');
   const [entrySearch, setEntrySearch] = useState('');
@@ -512,6 +536,84 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
     setExitChecklist(safeChecklistGroup((movement.checklist as Record<string, Json> | undefined)?.entry));
     setExitForm(createExitFormDefaults());
     setExitPhotos([]);
+  };
+
+  const openVehicleEditModal = (vehicle: FleetVehicle) => {
+    setVehicleToEdit(vehicle);
+    setVehicleEditForm({
+      plate: vehicle.plate,
+      name: vehicle.name,
+      responsible_name: vehicle.responsible_name || '',
+      status: vehicle.status,
+      usage_type: vehicle.usage_type,
+      in_patio: vehicle.in_patio,
+    });
+    setVehicleEditErrors({});
+  };
+
+  const closeVehicleEditModal = () => {
+    setVehicleToEdit(null);
+    setVehicleEditErrors({});
+    setVehicleEditSaving(false);
+  };
+
+  const validateVehicleEditForm = () => {
+    const errors: Partial<Record<keyof PatioVehicleEditForm, string>> = {};
+
+    if (!vehicleEditForm.plate.trim()) {
+      errors.plate = 'Informe a placa do veículo';
+    }
+
+    if (!vehicleEditForm.name.trim()) {
+      errors.name = 'Informe o nome do veículo';
+    }
+
+    if (!vehicleEditForm.status) {
+      errors.status = 'Selecione um status';
+    }
+
+    if (!vehicleEditForm.usage_type) {
+      errors.usage_type = 'Selecione o tipo de uso';
+    }
+
+    setVehicleEditErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleVehicleEditSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!vehicleToEdit) {
+      return;
+    }
+
+    if (!validateVehicleEditForm()) {
+      onError('Preencha os campos obrigatórios do veículo');
+      return;
+    }
+
+    try {
+      setVehicleEditSaving(true);
+
+      await vehicleCatalogService.updateVehicle(vehicleToEdit.id, {
+        plate: vehicleEditForm.plate,
+        name: vehicleEditForm.name,
+        responsible_name: vehicleEditForm.responsible_name,
+        status: vehicleEditForm.status,
+        usage_type: vehicleEditForm.usage_type,
+      });
+
+      await vehicleCatalogService.updatePatioStatus(vehicleToEdit.id, vehicleEditForm.in_patio);
+
+      onSuccess('Veículo atualizado com sucesso');
+      closeVehicleEditModal();
+      await loadData();
+    } catch (error) {
+      console.error('Erro ao atualizar veículo do pátio:', error);
+      onError('Erro ao salvar alterações do veículo');
+    } finally {
+      setVehicleEditSaving(false);
+    }
   };
 
   const resetEntryForm = () => {
@@ -1110,7 +1212,17 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
                         <p className="text-sm text-gray-600">{vehicle.name}</p>
                         <p className="text-xs text-gray-500">Código: {formatShortCode(vehicle.short_code)}</p>
                       </div>
-                      <Badge tone="success">Disponível</Badge>
+                      <div className="flex flex-col items-end gap-2">
+                        <Badge tone="success">Disponível</Badge>
+                        <button
+                          type="button"
+                          onClick={() => openVehicleEditModal(vehicle)}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                          Editar
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -1626,6 +1738,136 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
                 className="flex-1 rounded-xl bg-red-600 px-4 py-3 font-semibold text-white hover:bg-red-700 disabled:opacity-60"
               >
                 {movementSaving ? 'Finalizando...' : 'Finalizar entrada'}
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={!!vehicleToEdit}
+        onClose={closeVehicleEditModal}
+        title="Editar veículo no pátio"
+        size="lg"
+      >
+        {vehicleToEdit && (
+          <form onSubmit={handleVehicleEditSubmit} className="space-y-6">
+            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+              <p className="font-bold text-gray-900">Código {formatShortCode(vehicleToEdit.short_code)}</p>
+              <p className="text-sm text-gray-600">
+                Ajuste os dados do veículo sem sair da aba de pátio.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Placa"
+                value={vehicleEditForm.plate}
+                onChange={(event) =>
+                  setVehicleEditForm((prev) => ({ ...prev, plate: event.target.value.toUpperCase() }))
+                }
+                error={vehicleEditErrors.plate}
+                required
+                placeholder="ABC-1234"
+              />
+              <Input
+                label="Nome"
+                value={vehicleEditForm.name}
+                onChange={(event) => setVehicleEditForm((prev) => ({ ...prev, name: event.target.value }))}
+                error={vehicleEditErrors.name}
+                required
+                placeholder="Ex: Fiat Strada 2024"
+              />
+            </div>
+
+            <Input
+              label="Responsável/Motorista"
+              value={vehicleEditForm.responsible_name}
+              onChange={(event) =>
+                setVehicleEditForm((prev) => ({ ...prev, responsible_name: event.target.value }))
+              }
+              placeholder="Ex: João Silva"
+            />
+
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">Tipo de uso</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {VEHICLE_USAGE_OPTIONS.map((usageType) => (
+                  <button
+                    key={usageType}
+                    type="button"
+                    onClick={() =>
+                      setVehicleEditForm((prev) => ({ ...prev, usage_type: usageType }))
+                    }
+                    className={`rounded-xl px-3 py-2 text-sm font-semibold border transition-all ${
+                      vehicleEditForm.usage_type === usageType
+                        ? 'bg-purple-600 text-white border-transparent shadow-premium-colored'
+                        : 'bg-white text-gray-700 border-gray-200 hover:border-purple-300'
+                    }`}
+                  >
+                    {usageType}
+                  </button>
+                ))}
+              </div>
+              {vehicleEditErrors.usage_type && (
+                <p className="text-sm text-red-600">{vehicleEditErrors.usage_type}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">Status</label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {VEHICLE_STATUS_OPTIONS.map((status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => setVehicleEditForm((prev) => ({ ...prev, status }))}
+                    className={`rounded-xl px-3 py-2 text-sm font-semibold border transition-all ${
+                      vehicleEditForm.status === status
+                        ? 'gradient-primary text-white border-transparent shadow-premium-colored'
+                        : 'bg-white text-gray-700 border-gray-200 hover:border-red-300'
+                    }`}
+                  >
+                    {status}
+                  </button>
+                ))}
+              </div>
+              {vehicleEditErrors.status && <p className="text-sm text-red-600">{vehicleEditErrors.status}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">Disponibilidade no pátio</label>
+              <button
+                type="button"
+                onClick={() => setVehicleEditForm((prev) => ({ ...prev, in_patio: !prev.in_patio }))}
+                className={`w-full rounded-xl border px-4 py-3 text-left text-sm font-semibold transition-all ${
+                  vehicleEditForm.in_patio
+                    ? 'border-green-200 bg-green-50 text-green-700'
+                    : 'border-gray-200 bg-gray-50 text-gray-700'
+                }`}
+              >
+                {vehicleEditForm.in_patio ? 'Disponível no pátio' : 'Fora do pátio'}
+              </button>
+              <p className="text-xs text-gray-500">
+                Se desligar essa opção, o veículo sai da lista de disponíveis.
+              </p>
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={closeVehicleEditModal}
+                className="flex-1 rounded-xl border border-gray-300 px-4 py-3 font-semibold text-gray-700 hover:bg-gray-100"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={vehicleEditSaving}
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3 font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+              >
+                <Save className="w-4 h-4" />
+                {vehicleEditSaving ? 'Salvando...' : 'Salvar alterações'}
               </button>
             </div>
           </form>
