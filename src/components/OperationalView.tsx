@@ -3,16 +3,20 @@ import type { Dispatch, FormEvent, ReactNode, SetStateAction } from 'react';
 import {
   CalendarDays,
   Camera,
+  CheckCircle2,
   ClipboardCheck,
   Edit2,
   ExternalLink,
   FileUp,
+  Filter,
   Plus,
+  Search,
   ShieldAlert,
   Timer,
   Save,
   Trash2,
   Truck,
+  UserCheck,
   Users,
 } from 'lucide-react';
 import { Input } from './Input';
@@ -41,6 +45,8 @@ interface OperationalViewProps {
 }
 
 type OperationalTab = 'entrada' | 'saida' | 'motoristas' | 'timeline' | 'relatorios';
+type DriverStatusFilter = 'Todos' | 'Ativos' | 'Inativos' | 'Regulares' | 'Vencendo' | 'Vencidas' | 'Pendentes';
+type DriverSort = 'name' | 'validity' | 'movements';
 type ChecklistItemState = { ok: boolean; note: string };
 type ChecklistGroup = Record<string, ChecklistItemState>;
 type TimelineEvent = {
@@ -147,6 +153,14 @@ function getDaysUntil(dateValue?: string | null) {
 
 function isDriverCnhPending(driver: DriverRecord) {
   return !driver.cnh_file_url || !driver.cnh_valid_until;
+}
+
+function getDriverCnhStatus(driver: DriverRecord) {
+  const daysLeft = getDaysUntil(driver.cnh_valid_until);
+  if (isDriverCnhPending(driver)) return 'Pendente';
+  if (daysLeft !== null && daysLeft < 0) return 'Vencida';
+  if (daysLeft !== null && daysLeft <= 30) return 'Vencendo';
+  return 'Regular';
 }
 
 function createChecklistState(): ChecklistGroup {
@@ -267,6 +281,9 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
   const [editingDriverId, setEditingDriverId] = useState<string | null>(null);
   const [driverCnhFile, setDriverCnhFile] = useState<File | null>(null);
   const [importingHistory, setImportingHistory] = useState(false);
+  const [driverManagementSearch, setDriverManagementSearch] = useState('');
+  const [driverStatusFilter, setDriverStatusFilter] = useState<DriverStatusFilter>('Todos');
+  const [driverSort, setDriverSort] = useState<DriverSort>('name');
 
   const [movementToClose, setMovementToClose] = useState<OperationalMovement | null>(null);
   const [returnDriverId, setReturnDriverId] = useState('');
@@ -404,6 +421,61 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
         .sort((a, b) => (a.daysLeft ?? 9999) - (b.daysLeft ?? 9999)),
     [drivers]
   );
+
+  const driverMovementStats = useMemo(() => {
+    const stats = new Map<string, { count: number; lastDate: string | null }>();
+    movements.forEach((movement) => {
+      if (!movement.driver_id) return;
+      const current = stats.get(movement.driver_id) || { count: 0, lastDate: null };
+      const movementDate = movement.exit_date || movement.entry_date;
+      stats.set(movement.driver_id, {
+        count: current.count + 1,
+        lastDate: !current.lastDate || movementDate > current.lastDate ? movementDate : current.lastDate,
+      });
+    });
+    return stats;
+  }, [movements]);
+
+  const driverSummary = useMemo(
+    () => ({
+      total: drivers.length,
+      active: drivers.filter((driver) => driver.is_active).length,
+      regular: drivers.filter((driver) => getDriverCnhStatus(driver) === 'Regular').length,
+      attention: drivers.filter((driver) => ['Vencendo', 'Vencida', 'Pendente'].includes(getDriverCnhStatus(driver))).length,
+    }),
+    [drivers]
+  );
+
+  const managedDrivers = useMemo(() => {
+    const search = normalizeLookupValue(driverManagementSearch);
+    return drivers
+      .filter((driver) => {
+        const status = getDriverCnhStatus(driver);
+        const matchesSearch =
+          !search ||
+          [driver.name, driver.short_code, driver.cnh_number || '', driver.phone || ''].some((value) =>
+            normalizeLookupValue(value).includes(search)
+          );
+        const matchesStatus =
+          driverStatusFilter === 'Todos' ||
+          (driverStatusFilter === 'Ativos' && driver.is_active) ||
+          (driverStatusFilter === 'Inativos' && !driver.is_active) ||
+          (driverStatusFilter === 'Regulares' && status === 'Regular') ||
+          (driverStatusFilter === 'Vencendo' && status === 'Vencendo') ||
+          (driverStatusFilter === 'Vencidas' && status === 'Vencida') ||
+          (driverStatusFilter === 'Pendentes' && status === 'Pendente');
+        return matchesSearch && matchesStatus;
+      })
+      .sort((a, b) => {
+        if (driverSort === 'validity') {
+          return (a.cnh_valid_until || '9999-12-31').localeCompare(b.cnh_valid_until || '9999-12-31');
+        }
+        if (driverSort === 'movements') {
+          return (driverMovementStats.get(b.id)?.count || 0) - (driverMovementStats.get(a.id)?.count || 0);
+        }
+        return a.name.localeCompare(b.name, 'pt-BR');
+      });
+  }, [driverManagementSearch, driverMovementStats, driverSort, driverStatusFilter, drivers]);
 
   const filteredMovements = useMemo(() => {
     const start = reportStartDate ? `${reportStartDate}T00:00:00` : null;
@@ -1367,11 +1439,32 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
       )}
 
       {activeTab === 'motoristas' && (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="space-y-6">
+          <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+            {[
+              { label: 'Cadastrados', value: driverSummary.total, icon: Users, color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' },
+              { label: 'Ativos', value: driverSummary.active, icon: UserCheck, color: 'text-green-700', bg: 'bg-green-50 border-green-200' },
+              { label: 'CNH regular', value: driverSummary.regular, icon: CheckCircle2, color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200' },
+              { label: 'Precisam atenção', value: driverSummary.attention, icon: ShieldAlert, color: 'text-red-700', bg: 'bg-red-50 border-red-200' },
+            ].map(({ label, value, icon: Icon, color, bg }) => (
+              <div key={label} className={`rounded-2xl border p-4 shadow-sm ${bg}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-bold uppercase tracking-wide text-gray-600">{label}</p>
+                  <Icon className={`h-5 w-5 ${color}`} />
+                </div>
+                <p className={`mt-2 text-3xl font-bold ${color}`}>{value}</p>
+              </div>
+            ))}
+          </section>
+
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(320px,0.8fr)_minmax(0,1.4fr)]">
           <section className="glass rounded-2xl p-6 shadow-premium">
             <div className="mb-5 flex items-center gap-2">
               <Users className="w-5 h-5 text-red-600" />
-              <h3 className="text-lg font-bold text-gray-900">Motoristas</h3>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">{editingDriverId ? 'Editar motorista' : 'Novo motorista'}</h3>
+                <p className="text-xs text-gray-500">Dados, validade e documento da CNH.</p>
+              </div>
             </div>
 
             <form onSubmit={handleDriverSubmit} className="space-y-4">
@@ -1436,6 +1529,18 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
                 placeholder="Opcional"
                 rows={3}
               />
+              <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">Motorista ativo</p>
+                  <p className="text-xs text-gray-500">Motoristas inativos não aparecem nas seleções de checklist.</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={driverForm.is_active ?? true}
+                  onChange={(event) => setDriverForm((prev) => ({ ...prev, is_active: event.target.checked }))}
+                  className="h-5 w-5 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                />
+              </label>
 
               <div className="flex flex-col gap-3 sm:flex-row">
                 <button
@@ -1473,32 +1578,92 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
           </section>
 
           <section className="glass rounded-2xl p-6 shadow-premium">
-            <div className="mb-5 flex items-center gap-2">
-              <Users className="w-5 h-5 text-red-600" />
-              <h3 className="text-lg font-bold text-gray-900">Lista de motoristas</h3>
+            <div className="mb-5 flex flex-col gap-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-red-600" />
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">Controle de motoristas</h3>
+                    <p className="text-xs text-gray-500">{managedDrivers.length} de {drivers.length} registros exibidos</p>
+                  </div>
+                </div>
+                {(driverManagementSearch || driverStatusFilter !== 'Todos') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDriverManagementSearch('');
+                      setDriverStatusFilter('Todos');
+                    }}
+                    className="text-sm font-semibold text-red-700 hover:text-red-900"
+                  >
+                    Limpar filtros
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
+                <label className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <input
+                    value={driverManagementSearch}
+                    onChange={(event) => setDriverManagementSearch(event.target.value)}
+                    placeholder="Buscar nome, código, CNH ou telefone"
+                    className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-10 pr-4 text-sm focus:border-red-500 focus:outline-none focus:ring-4 focus:ring-red-100"
+                  />
+                </label>
+                <label className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3">
+                  <Filter className="h-4 w-4 text-gray-500" />
+                  <select
+                    value={driverStatusFilter}
+                    onChange={(event) => setDriverStatusFilter(event.target.value as DriverStatusFilter)}
+                    className="min-w-32 bg-transparent py-3 text-sm font-semibold text-gray-700 outline-none"
+                  >
+                    {(['Todos', 'Ativos', 'Inativos', 'Regulares', 'Vencendo', 'Vencidas', 'Pendentes'] as DriverStatusFilter[]).map((status) => (
+                      <option key={status}>{status}</option>
+                    ))}
+                  </select>
+                </label>
+                <select
+                  value={driverSort}
+                  onChange={(event) => setDriverSort(event.target.value as DriverSort)}
+                  className="rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm font-semibold text-gray-700 outline-none"
+                >
+                  <option value="name">Ordenar por nome</option>
+                  <option value="validity">Ordenar por validade</option>
+                  <option value="movements">Mais movimentações</option>
+                </select>
+              </div>
             </div>
 
-            <div className="space-y-3 max-h-[760px] overflow-y-auto pr-1">
-              {drivers.length === 0 ? (
+            <div className="space-y-3 max-h-[860px] overflow-y-auto pr-1">
+              {managedDrivers.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-gray-300 p-6 text-center text-gray-500">
-                  Nenhum motorista cadastrado.
+                  Nenhum motorista encontrado com esses filtros.
                 </div>
               ) : (
-                drivers.map((driver) => {
+                managedDrivers.map((driver) => {
                   const daysLeft = getDaysUntil(driver.cnh_valid_until);
+                  const cnhStatus = getDriverCnhStatus(driver);
+                  const movementStats = driverMovementStats.get(driver.id);
                   return (
-                    <div key={driver.id} className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-bold text-gray-900">{driver.name}</p>
-                          <p className="text-sm text-gray-600">
-                            {driver.cnh_number ? `CNH ${driver.cnh_number}` : 'Número da CNH não informado'}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {driver.cnh_valid_until ? `Validade: ${formatDateBR(driver.cnh_valid_until)}` : 'Sem validade informada'}
-                          </p>
-                          <p className="text-xs text-gray-500">Código: {formatShortCode(driver.short_code)}</p>
-                          <p className="text-xs text-gray-500">Origem: {driver.origin === 'historico' ? 'Importado do histórico' : 'Manual'}</p>
+                    <div key={driver.id} className={`rounded-2xl border bg-gray-50 p-4 ${!driver.is_active ? 'border-gray-300 opacity-75' : 'border-gray-200'}`}>
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-bold text-gray-900">{driver.name}</p>
+                            {!driver.is_active && <Badge tone="neutral">Inativo</Badge>}
+                            <Badge tone={cnhStatus === 'Pendente' || cnhStatus === 'Vencendo' ? 'warning' : cnhStatus === 'Vencida' ? 'danger' : 'success'}>
+                              {cnhStatus}
+                            </Badge>
+                          </div>
+                          <div className="mt-2 grid grid-cols-1 gap-1 text-sm text-gray-600 sm:grid-cols-2">
+                            <p>{driver.cnh_number ? `CNH ${driver.cnh_number}` : 'Número da CNH não informado'}</p>
+                            <p>{driver.cnh_valid_until ? `Validade: ${formatDateBR(driver.cnh_valid_until)}` : 'Sem validade informada'}</p>
+                            <p>Código: {formatShortCode(driver.short_code)}</p>
+                            <p>{movementStats?.count || 0} movimentação(ões)</p>
+                            <p>{driver.phone?.trim() ? `Telefone: ${driver.phone}` : 'Telefone não informado'}</p>
+                            <p>{movementStats?.lastDate ? `Última atividade: ${formatDateBR(movementStats.lastDate)}` : 'Sem atividade registrada'}</p>
+                          </div>
                           {driver.cnh_file_url && (
                             <a
                               href={driver.cnh_file_url}
@@ -1512,10 +1677,7 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
                           )}
                         </div>
 
-                        <div className="flex flex-col items-end gap-2">
-                          <Badge tone={isDriverCnhPending(driver) ? 'warning' : daysLeft !== null && daysLeft < 0 ? 'danger' : 'success'}>
-                            {isDriverCnhPending(driver) ? 'Pendente' : daysLeft !== null && daysLeft < 0 ? 'Vencida' : 'Ativa'}
-                          </Badge>
+                        <div className="flex shrink-0 gap-2 sm:flex-col sm:items-stretch">
                           <button
                             type="button"
                             onClick={() => handleDriverEdit(driver)}
@@ -1535,12 +1697,18 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
                           </button>
                         </div>
                       </div>
+                      {cnhStatus === 'Vencendo' && daysLeft !== null && (
+                        <p className="mt-3 rounded-xl bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-800">
+                          A CNH vence em {daysLeft} dia(s).
+                        </p>
+                      )}
                     </div>
                   );
                 })
               )}
             </div>
           </section>
+          </div>
         </div>
       )}
 
