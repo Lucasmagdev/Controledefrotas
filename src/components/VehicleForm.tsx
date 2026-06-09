@@ -49,16 +49,19 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [vehicles, setVehicles] = useState<FleetVehicle[]>([]);
+  const [unavailableVehiclePlates, setUnavailableVehiclePlates] = useState<Set<string>>(new Set());
   const [loadingVehicles, setLoadingVehicles] = useState(true);
   const [vehicleSearch, setVehicleSearch] = useState('');
 
   useEffect(() => {
     const loadVehicles = async () => {
       try {
-        const activeVehicles = await vehicleCatalogService.listVehicles({
-          status: 'Ativo',
-        });
+        const [activeVehicles, unavailablePlates] = await Promise.all([
+          vehicleCatalogService.listVehicles({ status: 'Ativo' }),
+          vehicleService.listUnavailableVehiclePlates(),
+        ]);
         setVehicles(activeVehicles);
+        setUnavailableVehiclePlates(new Set(unavailablePlates));
       } catch (error) {
         console.error('Erro ao carregar veiculos:', error);
         setVehicles([]);
@@ -71,7 +74,9 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
   }, []);
 
   const filteredVehicles = useMemo(() => {
-    const availableVehicles = vehicles.filter((vehicle) => vehicle.in_patio);
+    const availableVehicles = vehicles.filter(
+      (vehicle) => !unavailableVehiclePlates.has(vehicle.plate.trim().toUpperCase())
+    );
     const normalizedSearch = normalizeSearchValue(vehicleSearch);
 
     if (!normalizedSearch) {
@@ -85,7 +90,7 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
 
       return searchableText.includes(normalizedSearch);
     });
-  }, [vehicleSearch, vehicles]);
+  }, [unavailableVehiclePlates, vehicleSearch, vehicles]);
 
   const displayedVehicles = useMemo(() => {
     if (!formData.vehicle_plate) {
@@ -103,8 +108,8 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
   }, [filteredVehicles, formData.vehicle_plate, vehicles]);
 
   const availableVehicleCount = useMemo(
-    () => vehicles.filter((vehicle) => vehicle.in_patio).length,
-    [vehicles]
+    () => vehicles.filter((vehicle) => !unavailableVehiclePlates.has(vehicle.plate.trim().toUpperCase())).length,
+    [unavailableVehiclePlates, vehicles]
   );
 
   const validateForm = (): boolean => {

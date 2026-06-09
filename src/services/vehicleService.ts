@@ -2,6 +2,29 @@ import { supabase } from '../lib/supabase';
 import type { VehicleRecord, VehicleRecordInput } from '../types/database';
 
 export const vehicleService = {
+  async listUnavailableVehiclePlates(): Promise<string[]> {
+    const [{ data: pickupRecords, error: pickupError }, { data: operationalMovements, error: operationalError }] =
+      await Promise.all([
+        (supabase.from('vehicle_records') as any)
+          .select('vehicle_plate')
+          .eq('status', 'Em uso'),
+        (supabase.from('operational_movements') as any)
+          .select('vehicle_plate')
+          .eq('status', 'Em aberto'),
+      ]);
+
+    if (pickupError) throw pickupError;
+    if (operationalError) throw operationalError;
+
+    return Array.from(
+      new Set(
+        [...(pickupRecords || []), ...(operationalMovements || [])]
+          .map((record) => record.vehicle_plate?.trim().toUpperCase())
+          .filter(Boolean)
+      )
+    );
+  },
+
   async createRecord(data: VehicleRecordInput): Promise<VehicleRecord> {
     console.log('🚀 Criando novo registro no Supabase...');
     const { data: record, error } = await (supabase.from('vehicle_records') as any)
