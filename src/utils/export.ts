@@ -1,16 +1,11 @@
 import type { VehicleRecord, FleetVehicle } from '../types/database';
 import { formatDateBR } from './date';
 
-function getVehicleByPlate(vehicles: FleetVehicle[], vehiclePlate: string) {
-  const normalizedPlate = vehiclePlate.trim().toUpperCase();
-  return vehicles.find((vehicle) => vehicle.plate.trim().toUpperCase() === normalizedPlate);
+function getRecordUsageType(record: VehicleRecord) {
+  return record.usage_type || 'Comum';
 }
 
-function getRecordUsageType(record: VehicleRecord, vehicles: FleetVehicle[] = []) {
-  return record.usage_type || getVehicleByPlate(vehicles, record.vehicle_plate)?.usage_type || 'Comum';
-}
-
-export function exportToCSV(records: VehicleRecord[], vehicles: FleetVehicle[] = []) {
+export function exportToCSV(records: VehicleRecord[]) {
   const headers = [
     'Placa/Veiculo',
     'Tipo de Uso',
@@ -28,7 +23,7 @@ export function exportToCSV(records: VehicleRecord[], vehicles: FleetVehicle[] =
 
   const rows = records.map((record) => [
     record.vehicle_plate,
-    getRecordUsageType(record, vehicles),
+    getRecordUsageType(record),
     record.reason,
     record.authorized_by,
     formatDateBR(record.pickup_date, ''),
@@ -72,7 +67,7 @@ export function exportDailyUtilizationExcel(records: VehicleRecord[], vehicles: 
 
   const recordRows = records.map((record) => [
     record.vehicle_plate,
-    getRecordUsageType(record, vehicles),
+    getRecordUsageType(record),
     record.status,
     record.pickup_name,
     formatDateBR(record.pickup_date),
@@ -82,7 +77,7 @@ export function exportDailyUtilizationExcel(records: VehicleRecord[], vehicles: 
 
   const vehicleRows = vehicles.map((vehicle) => [
     vehicle.plate,
-    vehicle.usage_type,
+    '',
     vehicle.status,
     vehicle.responsible_name || '-',
     formatDateBR(vehicle.created_at),
@@ -111,7 +106,6 @@ export function exportDailyUtilizationExcel(records: VehicleRecord[], vehicles: 
 
 export function generatePrintReport(
   records: VehicleRecord[],
-  vehicles: FleetVehicle[] = [],
   filters?: {
     startDate?: string;
     endDate?: string;
@@ -276,7 +270,7 @@ export function generatePrintReport(
               (record) => `
             <tr>
               <td>${record.vehicle_plate}</td>
-              <td>${getRecordUsageType(record, vehicles)}</td>
+              <td>${getRecordUsageType(record)}</td>
               <td>${record.reason}</td>
               <td>${formatDateBR(record.pickup_date)} ${record.pickup_time}</td>
               <td>${record.pickup_name}</td>

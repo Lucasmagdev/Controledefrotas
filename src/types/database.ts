@@ -35,11 +35,11 @@ export type FuelLevel = 'Reserva' | '1/4' | '1/2' | '3/4' | 'Cheio';
 export interface FleetVehicle {
   id: string;
   short_code: string;
+  legacy_short_code: string | null;
   in_patio: boolean;
   plate: string;
   name: string;
   responsible_name: string;
-  usage_type: VehicleUsageType;
   status: VehicleStatus;
   created_at: string;
   updated_at: string;
@@ -49,7 +49,6 @@ export interface FleetVehicleInput {
   plate: string;
   name: string;
   responsible_name: string;
-  usage_type: VehicleUsageType;
   status: VehicleStatus;
 }
 
@@ -59,6 +58,10 @@ export interface DriverRecord {
   name: string;
   cnh_number: string | null;
   cnh_valid_until: string | null;
+  cnh_file_path: string | null;
+  cnh_file_url: string | null;
+  cnh_file_name: string | null;
+  cnh_file_type: string | null;
   origin: 'manual' | 'historico';
   is_active: boolean;
   phone?: string | null;
@@ -71,6 +74,10 @@ export interface DriverInput {
   name: string;
   cnh_number?: string | null;
   cnh_valid_until?: string | null;
+  cnh_file_path?: string | null;
+  cnh_file_url?: string | null;
+  cnh_file_name?: string | null;
+  cnh_file_type?: string | null;
   origin?: 'manual' | 'historico';
   is_active?: boolean;
   phone?: string;
@@ -151,20 +158,20 @@ export interface Database {
         Insert: {
           id?: string;
           short_code?: string;
+          legacy_short_code?: string | null;
           plate: string;
           name: string;
           responsible_name?: string;
-          usage_type?: VehicleUsageType;
           status: VehicleStatus;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           short_code?: string;
+          legacy_short_code?: string | null;
           plate?: string;
           name?: string;
           responsible_name?: string;
-          usage_type?: VehicleUsageType;
           status?: VehicleStatus;
           updated_at?: string;
         };

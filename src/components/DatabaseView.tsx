@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Filter, Download, Printer, Eye, Edit2, Trash2, BarChart3, TrendingUp, CheckCircle2, Plus, FileSpreadsheet, LogIn } from 'lucide-react';
 import { vehicleService } from '../services/vehicleService';
 import { vehicleCatalogService } from '../services/vehicleCatalogService';
@@ -7,7 +7,7 @@ import { Modal } from './Modal';
 import { VehicleForm } from './VehicleForm';
 import { exportToCSV, exportDailyUtilizationExcel, generatePrintReport } from '../utils/export';
 import { formatDateBR, getDateKey, toDateInputValue } from '../utils/date';
-import type { VehicleRecord, FleetVehicle, VehicleRecordInput, VehicleUsageType } from '../types/database';
+import type { VehicleRecord, FleetVehicle, VehicleRecordInput } from '../types/database';
 
 interface DatabaseViewProps {
   onSuccess: (message: string) => void;
@@ -119,7 +119,7 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
   };
 
   const handleExport = () => {
-    exportToCSV(filteredRecords, allVehicles);
+    exportToCSV(filteredRecords);
     onSuccess('Relatório exportado com sucesso');
   };
 
@@ -129,28 +129,14 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
   };
 
   const handlePrint = () => {
-    generatePrintReport(filteredRecords, allVehicles, {
+    generatePrintReport(filteredRecords, {
       startDate: recordFilterStart,
       endDate: recordFilterEnd,
       status: statusFilter,
     });
   };
 
-  const vehicleByPlate = useMemo(() => {
-    const map = new Map<string, FleetVehicle>();
-    allVehicles.forEach((vehicle) => {
-      map.set(vehicle.plate.trim().toUpperCase(), vehicle);
-    });
-    return map;
-  }, [allVehicles]);
-
-  const getVehicleUsageType = (vehiclePlate: string): VehicleUsageType => {
-    return vehicleByPlate.get(vehiclePlate.trim().toUpperCase())?.usage_type || 'Comum';
-  };
-
-  const getRecordUsageType = (record: VehicleRecord): VehicleUsageType => {
-    return record.usage_type || getVehicleUsageType(record.vehicle_plate);
-  };
+  const getRecordUsageType = (record: VehicleRecord) => record.usage_type || 'Comum';
 
   const stats = {
     total: filteredRecords.length,
@@ -163,7 +149,7 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
     vehicle_plate: record.vehicle_plate,
     reason: record.reason,
     authorized_by: record.authorized_by,
-    usage_type: getRecordUsageType(record),
+    usage_type: record.usage_type || 'Comum',
     pickup_date: record.pickup_date,
     pickup_time: record.pickup_time,
     pickup_name: record.pickup_name,
@@ -319,7 +305,7 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
       ) : (
         <>
           {/* Tabela Desktop Premium */}
-          <div className="hidden md:block glass rounded-2xl shadow-premium overflow-hidden animate-fade-in">
+          <div className="hidden 2xl:block glass rounded-2xl shadow-premium overflow-hidden animate-fade-in">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1080px]">
                 <thead className="bg-gray-50 border-b border-gray-200">
@@ -452,16 +438,16 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
           </div>
 
           {/* Cards Mobile */}
-          <div className="md:hidden space-y-4">
+          <div className="2xl:hidden space-y-4">
             {filteredRecords.map((record, index) => (
               <div 
                 key={record.id} 
                 className="glass rounded-2xl p-5 shadow-md animate-fade-in"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
-                <div className="flex justify-between items-start mb-4 gap-2">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center text-red-700 font-bold">
+                    <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center text-red-700 font-bold flex-shrink-0">
                       {record.vehicle_plate.substring(0, 2)}
                     </div>
                     <div className="min-w-0">
@@ -469,24 +455,26 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
                       <p className="text-sm text-gray-600 truncate">{record.pickup_name}</p>
                     </div>
                   </div>
-                  <span
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full ${
-                      record.status === 'Em uso'
-                        ? 'bg-yellow-100 text-yellow-700'
-                        : 'bg-green-100 text-green-700'
-                    }`}
-                  >
-                    {record.status}
-                  </span>
-                  <span
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full ${
-                      getRecordUsageType(record) === 'Rota'
-                        ? 'bg-purple-100 text-purple-700'
-                        : 'bg-blue-100 text-blue-700'
-                    }`}
-                  >
-                    {getRecordUsageType(record)}
-                  </span>
+                  <div className="flex flex-wrap gap-2 sm:justify-end">
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full ${
+                        record.status === 'Em uso'
+                          ? 'bg-yellow-100 text-yellow-700'
+                          : 'bg-green-100 text-green-700'
+                      }`}
+                    >
+                      {record.status}
+                    </span>
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-full ${
+                        getRecordUsageType(record) === 'Rota'
+                          ? 'bg-purple-100 text-purple-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }`}
+                    >
+                      {getRecordUsageType(record)}
+                    </span>
+                  </div>
                 </div>
                 
                 <div className="space-y-2 mb-4 p-3 bg-gray-50 rounded-xl">
@@ -651,13 +639,6 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
                           : 'bg-yellow-100 text-yellow-700'
                       }`}>
                         {vehicle.status}
-                      </span>
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                        vehicle.usage_type === 'Rota'
-                          ? 'bg-purple-100 text-purple-700'
-                          : 'bg-blue-100 text-blue-700'
-                      }`}>
-                        {vehicle.usage_type}
                       </span>
                     </div>
                     <p className="text-sm text-gray-700 font-medium mb-1">{vehicle.name}</p>

@@ -9,6 +9,7 @@ import type {
 } from '../types/database';
 
 const PHOTO_BUCKET = 'vehicle-operation-photos';
+const DRIVER_CNH_BUCKET = 'driver-cnh-documents';
 
 const CHECKLIST_LABELS: Record<string, string> = {
   pneus: 'Pneus e estepe',
@@ -199,11 +200,62 @@ export const operationalService = {
     return data;
   },
 
+  async uploadDriverCnh(driver: DriverRecord, file: File): Promise<DriverRecord> {
+    const allowedTypes = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error('O anexo da CNH deve ter no máximo 10 MB');
+    }
+    if (file.type && !allowedTypes.has(file.type)) {
+      throw new Error('Formato de anexo da CNH não permitido');
+    }
+
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const filePath = `${driver.id}/${Date.now()}-${safeName}`;
+    const { error: uploadError } = await supabase.storage
+      .from(DRIVER_CNH_BUCKET)
+      .upload(filePath, file, {
+        contentType: file.type || 'application/octet-stream',
+        upsert: false,
+      });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data: publicUrlData } = supabase.storage.from(DRIVER_CNH_BUCKET).getPublicUrl(filePath);
+
+    try {
+      const updatedDriver = await this.updateDriver(driver.id, {
+        cnh_file_path: filePath,
+        cnh_file_url: publicUrlData.publicUrl,
+        cnh_file_name: file.name,
+        cnh_file_type: file.type || null,
+      });
+
+      if (driver.cnh_file_path) {
+        await supabase.storage.from(DRIVER_CNH_BUCKET).remove([driver.cnh_file_path]);
+      }
+
+      return updatedDriver;
+    } catch (error) {
+      await supabase.storage.from(DRIVER_CNH_BUCKET).remove([filePath]);
+      throw error;
+    }
+  },
+
   async deleteDriver(id: string): Promise<void> {
+    const { data: driver } = await (supabase.from('drivers') as any)
+      .select('cnh_file_path')
+      .eq('id', id)
+      .maybeSingle();
     const { error } = await (supabase.from('drivers') as any).delete().eq('id', id);
 
     if (error) {
       throw error;
+    }
+
+    if (driver?.cnh_file_path) {
+      await supabase.storage.from(DRIVER_CNH_BUCKET).remove([driver.cnh_file_path]);
     }
   },
 

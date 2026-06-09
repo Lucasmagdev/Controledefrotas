@@ -5,6 +5,8 @@ import {
   Camera,
   ClipboardCheck,
   Edit2,
+  ExternalLink,
+  FileUp,
   Plus,
   ShieldAlert,
   Timer,
@@ -62,14 +64,12 @@ const CHECKLIST_ITEMS = [
 const FUEL_OPTIONS: FuelLevel[] = ['Reserva', '1/4', '1/2', '3/4', 'Cheio'];
 const OPERATION_OPTIONS: OperationType[] = ['Obras', 'Trajeto curto', 'Viagem'];
 const VEHICLE_STATUS_OPTIONS = ['Ativo', 'Inativo', 'Em Manut.'] as const;
-const VEHICLE_USAGE_OPTIONS = ['Comum', 'Rota'] as const;
 
 type PatioVehicleEditForm = {
   plate: string;
   name: string;
   responsible_name: string;
   status: (typeof VEHICLE_STATUS_OPTIONS)[number];
-  usage_type: (typeof VEHICLE_USAGE_OPTIONS)[number];
   in_patio: boolean;
 };
 
@@ -143,6 +143,10 @@ function getDaysUntil(dateValue?: string | null) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function isDriverCnhPending(driver: DriverRecord) {
+  return !driver.cnh_file_url || !driver.cnh_valid_until;
 }
 
 function createChecklistState(): ChecklistGroup {
@@ -236,7 +240,6 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
     name: '',
     responsible_name: '',
     status: 'Ativo',
-    usage_type: 'Comum',
     in_patio: true,
   });
   const [vehicleEditErrors, setVehicleEditErrors] = useState<Partial<Record<keyof PatioVehicleEditForm, string>>>({});
@@ -261,6 +264,8 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
   });
   const [driverSaving, setDriverSaving] = useState(false);
   const [driverDeletingId, setDriverDeletingId] = useState<string | null>(null);
+  const [editingDriverId, setEditingDriverId] = useState<string | null>(null);
+  const [driverCnhFile, setDriverCnhFile] = useState<File | null>(null);
   const [importingHistory, setImportingHistory] = useState(false);
 
   const [movementToClose, setMovementToClose] = useState<OperationalMovement | null>(null);
@@ -338,7 +343,9 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
     if (!search) return vehiclesInPatio;
 
     return vehiclesInPatio.filter((vehicle) =>
-      [vehicle.short_code, vehicle.plate, vehicle.name].some((value) => normalizeLookupValue(value).includes(search))
+      [vehicle.short_code, vehicle.legacy_short_code || '', vehicle.plate, vehicle.name].some((value) =>
+        normalizeLookupValue(value).includes(search)
+      )
     );
   }, [vehiclesInPatio, vehiclePickerSearch]);
 
@@ -393,7 +400,7 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
           ...driver,
           daysLeft: getDaysUntil(driver.cnh_valid_until),
         }))
-        .filter((driver) => driver.daysLeft === null || driver.daysLeft <= 30)
+        .filter((driver) => isDriverCnhPending(driver) || (driver.daysLeft !== null && driver.daysLeft <= 30))
         .sort((a, b) => (a.daysLeft ?? 9999) - (b.daysLeft ?? 9999)),
     [drivers]
   );
@@ -475,7 +482,9 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
 
     const findVehicleMatch = () =>
       vehicles.find((vehicle) =>
-        [vehicle.short_code, vehicle.id, vehicle.plate].map(normalizeLookupValue).includes(normalized)
+        [vehicle.short_code, vehicle.legacy_short_code || '', vehicle.id, vehicle.plate]
+          .map(normalizeLookupValue)
+          .includes(normalized)
       );
 
     const preferredMatch = activeTab === 'entrada' ? findMovementMatch() || findVehicleMatch() : findVehicleMatch() || findMovementMatch();
@@ -545,7 +554,6 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
       name: vehicle.name,
       responsible_name: vehicle.responsible_name || '',
       status: vehicle.status,
-      usage_type: vehicle.usage_type,
       in_patio: vehicle.in_patio,
     });
     setVehicleEditErrors({});
@@ -572,10 +580,6 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
       errors.status = 'Selecione um status';
     }
 
-    if (!vehicleEditForm.usage_type) {
-      errors.usage_type = 'Selecione o tipo de uso';
-    }
-
     setVehicleEditErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -600,7 +604,6 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
         name: vehicleEditForm.name,
         responsible_name: vehicleEditForm.responsible_name,
         status: vehicleEditForm.status,
-        usage_type: vehicleEditForm.usage_type,
       });
 
       await vehicleCatalogService.updatePatioStatus(vehicleToEdit.id, vehicleEditForm.in_patio);
@@ -703,8 +706,24 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
 
     try {
       setDriverSaving(true);
-      await operationalService.createDriver(driverForm);
-      onSuccess('Motorista cadastrado com sucesso');
+      const existingDriver = editingDriverId
+        ? drivers.find((driver) => driver.id === editingDriverId) || null
+        : null;
+      let savedDriver = existingDriver
+        ? await operationalService.updateDriver(existingDriver.id, driverForm)
+        : await operationalService.createDriver(driverForm);
+
+      if (!existingDriver) {
+        setEditingDriverId(savedDriver.id);
+      }
+
+      if (driverCnhFile) {
+        savedDriver = await operationalService.uploadDriverCnh(savedDriver, driverCnhFile);
+      }
+
+      onSuccess(existingDriver ? 'Motorista atualizado com sucesso' : 'Motorista cadastrado com sucesso');
+      setEditingDriverId(null);
+      setDriverCnhFile(null);
       setDriverForm({
         name: '',
         cnh_number: '',
@@ -717,10 +736,38 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
       await loadData();
     } catch (error) {
       console.error('Erro ao salvar motorista:', error);
-      onError('Erro ao cadastrar motorista');
+      onError('Erro ao salvar motorista ou anexo da CNH');
     } finally {
       setDriverSaving(false);
     }
+  };
+
+  const handleDriverEdit = (driver: DriverRecord) => {
+    setEditingDriverId(driver.id);
+    setDriverCnhFile(null);
+    setDriverForm({
+      name: driver.name,
+      cnh_number: driver.cnh_number || '',
+      cnh_valid_until: driver.cnh_valid_until || '',
+      phone: driver.phone || '',
+      notes: driver.notes || '',
+      origin: driver.origin,
+      is_active: driver.is_active,
+    });
+  };
+
+  const cancelDriverEdit = () => {
+    setEditingDriverId(null);
+    setDriverCnhFile(null);
+    setDriverForm({
+      name: '',
+      cnh_number: '',
+      cnh_valid_until: '',
+      phone: '',
+      notes: '',
+      origin: 'manual',
+      is_active: true,
+    });
   };
 
   const handleDriverDelete = async (id: string) => {
@@ -914,7 +961,7 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
         <div className="glass min-w-[116px] rounded-xl sm:min-w-0 sm:rounded-2xl p-3 sm:p-5 shadow-premium">
           <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">CNH pendente</p>
           <p className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-bold text-blue-600">
-            {drivers.filter((driver) => !driver.cnh_number).length}
+            {drivers.filter(isDriverCnhPending).length}
           </p>
         </div>
       </div>
@@ -990,7 +1037,7 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
                     label="Buscar veículo"
                     value={entrySearch}
                     onChange={(event) => setEntrySearch(event.target.value)}
-                    placeholder="Placa, código do veículo ou QR"
+                    placeholder="Código de 3 dígitos, placa ou QR"
                   />
 
                   <BarcodeScanner
@@ -1052,16 +1099,18 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
                         .map((driver) => (
                           <option key={driver.id} value={driver.id}>
                             {formatShortCode(driver.short_code)} - {driver.name}
-                            {driver.cnh_number ? ` - CNH ${driver.cnh_number}` : ' - CNH pendente'}
+                            {driver.cnh_number ? ` - CNH ${driver.cnh_number}` : ' - número não informado'}
                           </option>
                         ))}
                     </select>
                     <p className="text-xs text-gray-500">
                       O motorista é apenas uma informação da operação e pode ser alterado sem mudar o veículo.
                     </p>
-                    {selectedDriver?.cnh_number ? (
+                    {selectedDriver ? (
                       <p className="text-xs text-gray-500">
-                        CNH {selectedDriver.cnh_number} válida até {selectedDriver.cnh_valid_until ? formatDateBR(selectedDriver.cnh_valid_until) : 'sem validade informada'}
+                        {selectedDriver.cnh_number ? `CNH ${selectedDriver.cnh_number}` : 'Número da CNH não informado'}
+                        {' | '}
+                        {selectedDriver.cnh_valid_until ? `válida até ${formatDateBR(selectedDriver.cnh_valid_until)}` : 'sem validade informada'}
                       </p>
                     ) : (
                       <p className="text-xs text-amber-700">Nenhum motorista selecionado. Você pode escolher ou trocar antes de salvar.</p>
@@ -1244,7 +1293,7 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
               label="Buscar movimentação aberta"
               value={entrySearch}
               onChange={(event) => setEntrySearch(event.target.value)}
-              placeholder="Placa, código do veículo ou do checklist"
+              placeholder="Código de 3 dígitos, placa ou checklist"
             />
             <div className="flex gap-3">
               <button
@@ -1346,6 +1395,34 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
                 onChange={(event) => setDriverForm((prev) => ({ ...prev, cnh_valid_until: event.target.value }))}
                 required={false}
               />
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-gray-700">Anexo da CNH</label>
+                <label className="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-gray-300 bg-white px-4 py-4 text-sm text-gray-700 hover:border-red-400 hover:bg-red-50">
+                  <FileUp className="h-5 w-5 flex-shrink-0 text-red-600" />
+                  <span className="min-w-0 flex-1 truncate">
+                    {driverCnhFile?.name ||
+                      (editingDriverId
+                        ? drivers.find((driver) => driver.id === editingDriverId)?.cnh_file_name
+                        : '') ||
+                      'Selecionar imagem ou PDF'}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf,application/pdf"
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0] || null;
+                      if (file && file.size > 10 * 1024 * 1024) {
+                        onError('O anexo da CNH deve ter no máximo 10 MB');
+                        event.target.value = '';
+                        return;
+                      }
+                      setDriverCnhFile(file);
+                    }}
+                  />
+                </label>
+                <p className="text-xs text-gray-500">Formatos aceitos: imagem ou PDF, até 10 MB.</p>
+              </div>
               <Input
                 label="Telefone"
                 value={driverForm.phone || ''}
@@ -1366,8 +1443,18 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
                   disabled={driverSaving}
                   className="flex-1 rounded-xl bg-gray-900 px-4 py-3 font-semibold text-white hover:bg-black disabled:opacity-60"
                 >
-                  {driverSaving ? 'Salvando...' : 'Adicionar motorista'}
+                  {driverSaving ? 'Salvando...' : editingDriverId ? 'Salvar alterações' : 'Adicionar motorista'}
                 </button>
+                {editingDriverId && (
+                  <button
+                    type="button"
+                    onClick={cancelDriverEdit}
+                    disabled={driverSaving}
+                    className="flex-1 rounded-xl border border-gray-300 px-4 py-3 font-semibold text-gray-700 hover:bg-gray-100 disabled:opacity-60"
+                  >
+                    Cancelar edição
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleImportHistoricalDrivers}
@@ -1405,19 +1492,38 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
                         <div>
                           <p className="font-bold text-gray-900">{driver.name}</p>
                           <p className="text-sm text-gray-600">
-                            {driver.cnh_number ? `CNH ${driver.cnh_number}` : 'CNH pendente'}
+                            {driver.cnh_number ? `CNH ${driver.cnh_number}` : 'Número da CNH não informado'}
                           </p>
                           <p className="text-xs text-gray-500">
                             {driver.cnh_valid_until ? `Validade: ${formatDateBR(driver.cnh_valid_until)}` : 'Sem validade informada'}
                           </p>
                           <p className="text-xs text-gray-500">Código: {formatShortCode(driver.short_code)}</p>
                           <p className="text-xs text-gray-500">Origem: {driver.origin === 'historico' ? 'Importado do histórico' : 'Manual'}</p>
+                          {driver.cnh_file_url && (
+                            <a
+                              href={driver.cnh_file_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-blue-700 hover:text-blue-900"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                              Abrir anexo da CNH
+                            </a>
+                          )}
                         </div>
 
                         <div className="flex flex-col items-end gap-2">
-                          <Badge tone={!driver.cnh_number ? 'warning' : daysLeft !== null && daysLeft < 0 ? 'danger' : 'success'}>
-                            {!driver.cnh_number ? 'Pendente' : daysLeft !== null && daysLeft < 0 ? 'Vencida' : 'Ativa'}
+                          <Badge tone={isDriverCnhPending(driver) ? 'warning' : daysLeft !== null && daysLeft < 0 ? 'danger' : 'success'}>
+                            {isDriverCnhPending(driver) ? 'Pendente' : daysLeft !== null && daysLeft < 0 ? 'Vencida' : 'Ativa'}
                           </Badge>
+                          <button
+                            type="button"
+                            onClick={() => handleDriverEdit(driver)}
+                            className="inline-flex items-center gap-1 rounded-xl border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                            Editar
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleDriverDelete(driver.id)}
@@ -1576,15 +1682,15 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
                           <div>
                             <p className="font-bold text-gray-900">{driver.name}</p>
                             <p className="text-sm text-gray-600">
-                              {driver.cnh_number ? `CNH ${driver.cnh_number}` : 'CNH pendente'}
+                              {driver.cnh_number ? `CNH ${driver.cnh_number}` : 'Número da CNH não informado'}
                             </p>
                             <p className="text-xs text-gray-500">Código: {formatShortCode(driver.short_code)}</p>
                             <p className="text-xs text-gray-500">
                               {driver.cnh_valid_until ? `Validade: ${formatDateBR(driver.cnh_valid_until)}` : 'Sem validade informada'}
                             </p>
                           </div>
-                          <Badge tone={!driver.cnh_number ? 'warning' : daysLeft !== null && daysLeft < 0 ? 'danger' : 'warning'}>
-                            {!driver.cnh_number ? 'Pendente' : daysLeft !== null && daysLeft < 0 ? 'Vencida' : `${daysLeft}d`}
+                          <Badge tone={isDriverCnhPending(driver) ? 'warning' : daysLeft !== null && daysLeft < 0 ? 'danger' : 'warning'}>
+                            {isDriverCnhPending(driver) ? 'Pendente' : daysLeft !== null && daysLeft < 0 ? 'Vencida' : `${daysLeft}d`}
                           </Badge>
                         </div>
                       </div>
@@ -1634,7 +1740,7 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
                   .map((driver) => (
                     <option key={driver.id} value={driver.id}>
                       {formatShortCode(driver.short_code)} - {driver.name}
-                      {driver.cnh_number ? ` - CNH ${driver.cnh_number}` : ' - CNH pendente'}
+                      {driver.cnh_number ? ` - CNH ${driver.cnh_number}` : ' - número não informado'}
                     </option>
                   ))}
               </select>
@@ -1788,31 +1894,6 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
               }
               placeholder="Ex: João Silva"
             />
-
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">Tipo de uso</label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {VEHICLE_USAGE_OPTIONS.map((usageType) => (
-                  <button
-                    key={usageType}
-                    type="button"
-                    onClick={() =>
-                      setVehicleEditForm((prev) => ({ ...prev, usage_type: usageType }))
-                    }
-                    className={`rounded-xl px-3 py-2 text-sm font-semibold border transition-all ${
-                      vehicleEditForm.usage_type === usageType
-                        ? 'bg-purple-600 text-white border-transparent shadow-premium-colored'
-                        : 'bg-white text-gray-700 border-gray-200 hover:border-purple-300'
-                    }`}
-                  >
-                    {usageType}
-                  </button>
-                ))}
-              </div>
-              {vehicleEditErrors.usage_type && (
-                <p className="text-sm text-red-600">{vehicleEditErrors.usage_type}</p>
-              )}
-            </div>
 
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-gray-700">Status</label>

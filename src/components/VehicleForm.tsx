@@ -107,25 +107,6 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
     [vehicles]
   );
 
-  useEffect(() => {
-    if (isReturnMode || !formData.vehicle_plate) {
-      return;
-    }
-
-    const selectedVehicle = vehicles.find((vehicle) => vehicle.plate === formData.vehicle_plate);
-
-    if (!selectedVehicle) {
-      return;
-    }
-
-    if (formData.usage_type !== selectedVehicle.usage_type) {
-      setFormData((prev) => ({
-        ...prev,
-        usage_type: selectedVehicle.usage_type,
-      }));
-    }
-  }, [formData.vehicle_plate, formData.usage_type, isReturnMode, vehicles]);
-
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -394,11 +375,10 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
                 <select
                   value={formData.vehicle_plate}
                   onChange={(e) => {
-                    const selectedVehicle = vehicles.find((vehicle) => vehicle.plate === e.target.value);
                     setFormData((prev) => ({
                       ...prev,
                       vehicle_plate: e.target.value,
-                      usage_type: selectedVehicle?.usage_type || 'Comum',
+                      usage_type: 'Comum',
                     }));
                     if (errors.vehicle_plate) setErrors((prev) => ({ ...prev, vehicle_plate: '' }));
                   }}
@@ -411,7 +391,6 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
                   {displayedVehicles.map((vehicle) => (
                     <option key={vehicle.id} value={vehicle.plate}>
                       {vehicle.plate} - {vehicle.name}
-                      {vehicle.usage_type === 'Rota' ? ' [Rota]' : ''}
                       {vehicle.responsible_name ? ` (${vehicle.responsible_name})` : ''}
                     </option>
                   ))}

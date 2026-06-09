@@ -4,7 +4,7 @@ import { Car, Search, Wrench, CheckCircle2, PauseCircle, Plus, Edit2, Trash2, Li
 import { Input } from './Input';
 import { Modal } from './Modal';
 import { vehicleCatalogService } from '../services/vehicleCatalogService';
-import type { FleetVehicle, FleetVehicleInput, VehicleStatus, VehicleUsageType } from '../types/database';
+import type { FleetVehicle, FleetVehicleInput, VehicleStatus } from '../types/database';
 
 interface VehiclesViewProps {
   onSuccess: (message: string) => void;
@@ -12,13 +12,10 @@ interface VehiclesViewProps {
 }
 
 const STATUS_OPTIONS: VehicleStatus[] = ['Ativo', 'Inativo', 'Em Manut.'];
-const USAGE_OPTIONS: VehicleUsageType[] = ['Comum', 'Rota'];
-
 const INITIAL_FORM: FleetVehicleInput = {
   plate: '',
   name: '',
   responsible_name: '',
-  usage_type: 'Comum',
   status: 'Ativo',
 };
 
@@ -68,14 +65,12 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
     const active = vehicles.filter((vehicle) => vehicle.status === 'Ativo').length;
     const inactive = vehicles.filter((vehicle) => vehicle.status === 'Inativo').length;
     const maintenance = vehicles.filter((vehicle) => vehicle.status === 'Em Manut.').length;
-    const route = vehicles.filter((vehicle) => vehicle.usage_type === 'Rota').length;
 
     return {
       total: vehicles.length,
       active,
       inactive,
       maintenance,
-      route,
     };
   }, [vehicles]);
 
@@ -92,10 +87,6 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
 
     if (!formData.status) {
       newErrors.status = 'Selecione um status';
-    }
-
-    if (!formData.usage_type) {
-      newErrors.usage_type = 'Selecione o tipo de uso';
     }
 
     setErrors(newErrors);
@@ -135,9 +126,7 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
           ? String((error as { message?: unknown }).message || '')
           : '';
 
-      if (message.toLowerCase().includes('usage_type') || message.toLowerCase().includes('column') || message.includes('42703')) {
-        onError('Erro ao salvar veículo. A coluna "Tipo de uso" ainda não foi aplicada no banco. Rode a migration nova.');
-      } else if (message.toLowerCase().includes('duplicate') || message.toLowerCase().includes('unique') || message.includes('23505')) {
+      if (message.toLowerCase().includes('duplicate') || message.toLowerCase().includes('unique') || message.includes('23505')) {
         onError('Erro ao salvar veículo. Verifique se a placa já existe.');
       } else {
         onError('Erro ao salvar veículo. Tente novamente.');
@@ -153,7 +142,6 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
       plate: vehicle.plate,
       name: vehicle.name,
       responsible_name: vehicle.responsible_name,
-      usage_type: vehicle.usage_type,
       status: vehicle.status,
     });
     setErrors({});
@@ -262,14 +250,6 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
     return 'bg-amber-100 text-amber-700';
   };
 
-  const usageStyle = (usageType: VehicleUsageType) => {
-    if (usageType === 'Rota') {
-      return 'bg-purple-100 text-purple-700';
-    }
-
-    return 'bg-blue-100 text-blue-700';
-  };
-
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center gap-3">
@@ -282,7 +262,7 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="glass rounded-2xl p-5 shadow-premium">
           <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Total</p>
           <p className="text-3xl font-bold text-gray-900 mt-2">{stats.total}</p>
@@ -298,10 +278,6 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
         <div className="glass rounded-2xl p-5 shadow-premium">
           <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Em Manutencao</p>
           <p className="text-3xl font-bold text-amber-600 mt-2">{stats.maintenance}</p>
-        </div>
-        <div className="glass rounded-2xl p-5 shadow-premium">
-          <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">De rota</p>
-          <p className="text-3xl font-bold text-purple-600 mt-2">{stats.route}</p>
         </div>
       </div>
 
@@ -339,30 +315,6 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
               value={formData.responsible_name}
               onChange={(event) => setFormData((prev) => ({ ...prev, responsible_name: event.target.value }))}
             />
-
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-700">Tipo de uso</label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {USAGE_OPTIONS.map((usageType) => (
-                  <button
-                    key={usageType}
-                    type="button"
-                    onClick={() => setFormData((prev) => ({ ...prev, usage_type: usageType }))}
-                    className={`rounded-xl px-3 py-2 text-sm font-semibold border transition-all ${
-                      formData.usage_type === usageType
-                        ? 'bg-purple-600 text-white border-transparent shadow-premium-colored'
-                        : 'bg-white text-gray-700 border-gray-200 hover:border-purple-300'
-                    }`}
-                  >
-                    {usageType}
-                  </button>
-                ))}
-              </div>
-              {errors.usage_type && <p className="text-sm text-red-600">{errors.usage_type}</p>}
-              <p className="text-xs text-gray-500">
-                VeÃ­culos de rota podem ser identificados separadamente nas telas e relatÃ³rios.
-              </p>
-            </div>
 
             <div className="space-y-2">
               <label className="text-sm font-semibold text-gray-700">Status</label>
@@ -451,11 +403,11 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
                       )}
                       <div className="flex items-center gap-2 mb-1">
                         <h4 className="text-lg font-bold text-gray-900">{vehicle.plate}</h4>
+                        <span className="rounded-full bg-gray-900 px-2.5 py-1 text-xs font-bold tracking-wider text-white">
+                          Código {vehicle.short_code}
+                        </span>
                         <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${statusStyle(vehicle.status)}`}>
                           {vehicle.status}
-                        </span>
-                        <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${usageStyle(vehicle.usage_type)}`}>
-                          {vehicle.usage_type}
                         </span>
                       </div>
                       <p className="text-gray-600 font-medium">{vehicle.name}</p>

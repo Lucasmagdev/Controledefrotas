@@ -183,7 +183,7 @@ export function BarcodeScanner({ open, onClose, onDetected }: BarcodeScannerProp
         <input
           value={manualValue}
           onChange={(event) => setManualValue(event.target.value)}
-          placeholder="Digite a placa, id do veiculo ou codigo lido"
+          placeholder="Codigo de 3 digitos, placa ou QR"
           className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-red-500 focus:ring-4 focus:ring-red-100"
         />
         <button
