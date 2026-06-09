@@ -75,7 +75,9 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
 
   const filteredVehicles = useMemo(() => {
     const availableVehicles = vehicles.filter(
-      (vehicle) => !unavailableVehiclePlates.has(vehicle.plate.trim().toUpperCase())
+      (vehicle) =>
+        !vehicle.fixed_driver_name?.trim() &&
+        !unavailableVehiclePlates.has(vehicle.plate.trim().toUpperCase())
     );
     const normalizedSearch = normalizeSearchValue(vehicleSearch);
 
@@ -108,7 +110,12 @@ export function VehicleForm({ onSuccess, onError, editData }: VehicleFormProps) 
   }, [filteredVehicles, formData.vehicle_plate, vehicles]);
 
   const availableVehicleCount = useMemo(
-    () => vehicles.filter((vehicle) => !unavailableVehiclePlates.has(vehicle.plate.trim().toUpperCase())).length,
+    () =>
+      vehicles.filter(
+        (vehicle) =>
+          !vehicle.fixed_driver_name?.trim() &&
+          !unavailableVehiclePlates.has(vehicle.plate.trim().toUpperCase())
+      ).length,
     [unavailableVehiclePlates, vehicles]
   );
 

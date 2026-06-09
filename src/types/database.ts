@@ -40,6 +40,7 @@ export interface FleetVehicle {
   plate: string;
   name: string;
   responsible_name: string;
+  fixed_driver_name: string;
   status: VehicleStatus;
   created_at: string;
   updated_at: string;
@@ -49,6 +50,7 @@ export interface FleetVehicleInput {
   plate: string;
   name: string;
   responsible_name: string;
+  fixed_driver_name: string;
   status: VehicleStatus;
 }
 
@@ -162,6 +164,7 @@ export interface Database {
           plate: string;
           name: string;
           responsible_name?: string;
+          fixed_driver_name?: string;
           status: VehicleStatus;
           created_at?: string;
           updated_at?: string;
@@ -172,6 +175,7 @@ export interface Database {
           plate?: string;
           name?: string;
           responsible_name?: string;
+          fixed_driver_name?: string;
           status?: VehicleStatus;
           updated_at?: string;
         };

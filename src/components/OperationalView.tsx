@@ -75,6 +75,7 @@ type PatioVehicleEditForm = {
   plate: string;
   name: string;
   responsible_name: string;
+  fixed_driver_name: string;
   status: (typeof VEHICLE_STATUS_OPTIONS)[number];
   in_patio: boolean;
 };
@@ -253,6 +254,7 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
     plate: '',
     name: '',
     responsible_name: '',
+    fixed_driver_name: '',
     status: 'Ativo',
     in_patio: true,
   });
@@ -351,7 +353,10 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
   );
 
   const vehiclesInPatio = useMemo(
-    () => vehicles.filter((vehicle) => vehicle.status === 'Ativo' && vehicle.in_patio),
+    () =>
+      vehicles.filter(
+        (vehicle) => vehicle.status === 'Ativo' && vehicle.in_patio && !vehicle.fixed_driver_name?.trim()
+      ),
     [vehicles]
   );
 
@@ -625,6 +630,7 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
       plate: vehicle.plate,
       name: vehicle.name,
       responsible_name: vehicle.responsible_name || '',
+      fixed_driver_name: vehicle.fixed_driver_name || '',
       status: vehicle.status,
       in_patio: vehicle.in_patio,
     });
@@ -675,6 +681,7 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
         plate: vehicleEditForm.plate,
         name: vehicleEditForm.name,
         responsible_name: vehicleEditForm.responsible_name,
+        fixed_driver_name: vehicleEditForm.fixed_driver_name,
         status: vehicleEditForm.status,
       });
 
@@ -2062,6 +2069,18 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
               }
               placeholder="Ex: João Silva"
             />
+
+            <Input
+              label="Condutor fixo"
+              value={vehicleEditForm.fixed_driver_name}
+              onChange={(event) =>
+                setVehicleEditForm((prev) => ({ ...prev, fixed_driver_name: event.target.value }))
+              }
+              placeholder="Deixe vazio para disponibilizar em retiradas"
+            />
+            <p className="-mt-4 text-xs text-gray-500">
+              Com condutor fixo, o veículo fica reservado e não aparece para retirada comum.
+            </p>
 
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-gray-700">Status</label>

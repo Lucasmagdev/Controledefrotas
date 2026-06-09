@@ -17,7 +17,7 @@ export const vehicleCatalogService = {
     if (filters?.search) {
       const sanitizedSearch = filters.search.trim();
       if (sanitizedSearch) {
-        query = query.or(`plate.ilike.%${sanitizedSearch}%,name.ilike.%${sanitizedSearch}%,short_code.ilike.%${sanitizedSearch}%,legacy_short_code.ilike.%${sanitizedSearch}%`);
+        query = query.or(`plate.ilike.%${sanitizedSearch}%,name.ilike.%${sanitizedSearch}%,responsible_name.ilike.%${sanitizedSearch}%,fixed_driver_name.ilike.%${sanitizedSearch}%,short_code.ilike.%${sanitizedSearch}%,legacy_short_code.ilike.%${sanitizedSearch}%`);
       }
     }
 
@@ -43,6 +43,7 @@ export const vehicleCatalogService = {
       ...input,
       plate: input.plate.trim().toUpperCase(),
       name: input.name.trim(),
+      fixed_driver_name: input.fixed_driver_name.trim(),
     };
 
     const { data, error } = await supabase
@@ -63,6 +64,7 @@ export const vehicleCatalogService = {
       ...input,
       ...(input.plate ? { plate: input.plate.trim().toUpperCase() } : {}),
       ...(input.name ? { name: input.name.trim() } : {}),
+      ...(input.fixed_driver_name !== undefined ? { fixed_driver_name: input.fixed_driver_name.trim() } : {}),
     };
 
     const { data, error } = await supabase

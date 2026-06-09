@@ -16,6 +16,7 @@ const INITIAL_FORM: FleetVehicleInput = {
   plate: '',
   name: '',
   responsible_name: '',
+  fixed_driver_name: '',
   status: 'Ativo',
 };
 
@@ -142,6 +143,7 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
       plate: vehicle.plate,
       name: vehicle.name,
       responsible_name: vehicle.responsible_name,
+      fixed_driver_name: vehicle.fixed_driver_name || '',
       status: vehicle.status,
     });
     setErrors({});
@@ -316,6 +318,16 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
               onChange={(event) => setFormData((prev) => ({ ...prev, responsible_name: event.target.value }))}
             />
 
+            <Input
+              label="Condutor fixo"
+              placeholder="Deixe vazio para disponibilizar em retiradas"
+              value={formData.fixed_driver_name}
+              onChange={(event) => setFormData((prev) => ({ ...prev, fixed_driver_name: event.target.value }))}
+            />
+            <p className="-mt-2 text-xs text-gray-500">
+              Ao informar um condutor fixo, o veículo fica reservado e não aparece para retirada comum.
+            </p>
+
             <div className="space-y-2">
               <label className="text-sm font-semibold text-gray-700">Status</label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -411,6 +423,11 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
                         </span>
                       </div>
                       <p className="text-gray-600 font-medium">{vehicle.name}</p>
+                      {vehicle.fixed_driver_name?.trim() && (
+                        <p className="mt-2 inline-flex rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-700">
+                          Condutor fixo: {vehicle.fixed_driver_name}
+                        </p>
+                      )}
                       <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         Cadastrado em {new Date(vehicle.created_at).toLocaleDateString('pt-BR')}
