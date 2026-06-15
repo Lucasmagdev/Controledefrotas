@@ -361,10 +361,27 @@ export const operationalService = {
   },
 
   async deleteMovement(id: string): Promise<void> {
+    const { data: movement } = await (supabase.from('operational_movements') as any)
+      .select('vehicle_id, status')
+      .eq('id', id)
+      .maybeSingle();
+
     const { error } = await (supabase.from('operational_movements') as any).delete().eq('id', id);
 
     if (error) {
       throw error;
+    }
+
+    // Movimento "Em aberto" tinha tirado o veículo do pátio. Apagar sem devolução
+    // deixaria in_patio travado em false, sumindo das retiradas. Restaura aqui.
+    if (movement?.status === 'Em aberto' && movement.vehicle_id) {
+      const { error: patioError } = await (supabase.from('vehicles') as any)
+        .update({ in_patio: true, updated_at: new Date().toISOString() })
+        .eq('id', movement.vehicle_id);
+
+      if (patioError) {
+        throw patioError;
+      }
     }
   },
 

@@ -126,10 +126,25 @@ export const vehicleService = {
   },
 
   async deleteRecord(id: string): Promise<void> {
+    const { data: record } = await (supabase.from('vehicle_records') as any)
+      .select('vehicle_plate, status')
+      .eq('id', id)
+      .maybeSingle();
+
     const { error } = await (supabase.from('vehicle_records') as any)
       .delete()
       .eq('id', id);
 
     if (error) throw error;
+
+    // Registro "Em uso" tinha tirado o veículo do pátio (in_patio=false). Apagar sem
+    // devolução deixaria a flag travada, sumindo das retiradas. Restaura aqui.
+    if (record?.status === 'Em uso' && record.vehicle_plate?.trim()) {
+      const { error: patioError } = await (supabase.from('vehicles') as any)
+        .update({ in_patio: true, updated_at: new Date().toISOString() })
+        .ilike('plate', record.vehicle_plate.trim());
+
+      if (patioError) throw patioError;
+    }
   },
 };

@@ -4,7 +4,8 @@ import { Car, Search, Wrench, CheckCircle2, PauseCircle, Plus, Edit2, Trash2, Li
 import { Input } from './Input';
 import { Modal } from './Modal';
 import { vehicleCatalogService } from '../services/vehicleCatalogService';
-import type { FleetVehicle, FleetVehicleInput, VehicleStatus } from '../types/database';
+import { operationalService } from '../services/operationalService';
+import type { DriverRecord, FleetVehicle, FleetVehicleInput, VehicleStatus } from '../types/database';
 
 interface VehiclesViewProps {
   onSuccess: (message: string) => void;
@@ -34,11 +35,13 @@ function getVehicleQrUrl(vehicle: FleetVehicle) {
 
 export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
   const [vehicles, setVehicles] = useState<FleetVehicle[]>([]);
+  const [drivers, setDrivers] = useState<DriverRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<VehicleStatus | 'Todos'>('Todos');
   const [formData, setFormData] = useState<FleetVehicleInput>(INITIAL_FORM);
+  const [inPatio, setInPatio] = useState(true);
   const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Partial<Record<keyof FleetVehicleInput, string>>>({});
   const [qrVehicle, setQrVehicle] = useState<FleetVehicle | null>(null);
@@ -61,6 +64,24 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
   useEffect(() => {
     loadVehicles();
   }, [search, statusFilter]);
+
+  useEffect(() => {
+    operationalService
+      .listDrivers()
+      .then(setDrivers)
+      .catch((error) => {
+        console.error('Erro ao carregar motoristas para veículos:', error);
+        onError('Erro ao carregar motoristas');
+      });
+  }, []);
+
+  const fixedDriverOptions = useMemo(() => {
+    const activeNames = drivers.filter((driver) => driver.is_active).map((driver) => driver.name);
+    if (formData.fixed_driver_name && !activeNames.includes(formData.fixed_driver_name)) {
+      return [formData.fixed_driver_name, ...activeNames];
+    }
+    return activeNames;
+  }, [drivers, formData.fixed_driver_name]);
 
   const stats = useMemo(() => {
     const active = vehicles.filter((vehicle) => vehicle.status === 'Ativo').length;
@@ -96,6 +117,7 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
 
   const resetForm = () => {
     setFormData(INITIAL_FORM);
+    setInPatio(true);
     setErrors({});
     setEditingVehicleId(null);
   };
@@ -112,6 +134,7 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
 
       if (editingVehicleId) {
         await vehicleCatalogService.updateVehicle(editingVehicleId, formData);
+        await vehicleCatalogService.updatePatioStatus(editingVehicleId, inPatio);
         onSuccess('Veículo atualizado com sucesso');
       } else {
         await vehicleCatalogService.createVehicle(formData);
@@ -146,6 +169,7 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
       fixed_driver_name: vehicle.fixed_driver_name || '',
       status: vehicle.status,
     });
+    setInPatio(vehicle.in_patio);
     setErrors({});
   };
 
@@ -318,12 +342,19 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
               onChange={(event) => setFormData((prev) => ({ ...prev, responsible_name: event.target.value }))}
             />
 
-            <Input
-              label="Condutor fixo"
-              placeholder="Deixe vazio para disponibilizar em retiradas"
-              value={formData.fixed_driver_name}
-              onChange={(event) => setFormData((prev) => ({ ...prev, fixed_driver_name: event.target.value }))}
-            />
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">Condutor fixo</label>
+              <select
+                value={formData.fixed_driver_name}
+                onChange={(event) => setFormData((prev) => ({ ...prev, fixed_driver_name: event.target.value }))}
+                className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 focus:border-red-500 focus:ring-4 focus:ring-red-100"
+              >
+                <option value="">Sem condutor fixo</option>
+                {fixedDriverOptions.map((driverName) => (
+                  <option key={driverName} value={driverName}>{driverName}</option>
+                ))}
+              </select>
+            </div>
             <p className="-mt-2 text-xs text-gray-500">
               Ao informar um condutor fixo, o veículo fica reservado e não aparece para retirada comum.
             </p>
@@ -348,6 +379,26 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
               </div>
               {errors.status && <p className="text-sm text-red-600">{errors.status}</p>}
             </div>
+
+            {editingVehicleId && (
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700">Disponibilidade no pátio</label>
+                <button
+                  type="button"
+                  onClick={() => setInPatio((prev) => !prev)}
+                  className={`w-full rounded-xl px-4 py-3 text-sm font-semibold border transition-all ${
+                    inPatio
+                      ? 'bg-green-50 text-green-700 border-green-300'
+                      : 'bg-amber-50 text-amber-700 border-amber-300'
+                  }`}
+                >
+                  {inPatio ? 'Disponível no pátio' : 'Fora do pátio'}
+                </button>
+                <p className="text-xs text-gray-500">
+                  Marque "Disponível no pátio" para o veículo voltar a aparecer nas retiradas.
+                </p>
+              </div>
+            )}
 
             <div className="flex gap-3 pt-2">
               <button

@@ -2070,14 +2070,27 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
               placeholder="Ex: João Silva"
             />
 
-            <Input
-              label="Condutor fixo"
-              value={vehicleEditForm.fixed_driver_name}
-              onChange={(event) =>
-                setVehicleEditForm((prev) => ({ ...prev, fixed_driver_name: event.target.value }))
-              }
-              placeholder="Deixe vazio para disponibilizar em retiradas"
-            />
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">Condutor fixo</label>
+              <select
+                value={vehicleEditForm.fixed_driver_name}
+                onChange={(event) =>
+                  setVehicleEditForm((prev) => ({ ...prev, fixed_driver_name: event.target.value }))
+                }
+                className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 focus:border-red-500 focus:ring-4 focus:ring-red-100"
+              >
+                <option value="">Sem condutor fixo</option>
+                {vehicleEditForm.fixed_driver_name &&
+                  !activeDrivers.some((driver) => driver.name === vehicleEditForm.fixed_driver_name) && (
+                    <option value={vehicleEditForm.fixed_driver_name}>{vehicleEditForm.fixed_driver_name}</option>
+                  )}
+                {activeDrivers.map((driver) => (
+                  <option key={driver.id} value={driver.name}>
+                    {formatShortCode(driver.short_code)} - {driver.name}
+                  </option>
+                ))}
+              </select>
+            </div>
             <p className="-mt-4 text-xs text-gray-500">
               Com condutor fixo, o veículo fica reservado e não aparece para retirada comum.
             </p>
