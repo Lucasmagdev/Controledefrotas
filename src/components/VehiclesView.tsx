@@ -41,7 +41,6 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<VehicleStatus | 'Todos'>('Todos');
   const [formData, setFormData] = useState<FleetVehicleInput>(INITIAL_FORM);
-  const [inPatio, setInPatio] = useState(true);
   const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Partial<Record<keyof FleetVehicleInput, string>>>({});
   const [qrVehicle, setQrVehicle] = useState<FleetVehicle | null>(null);
@@ -117,7 +116,6 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
 
   const resetForm = () => {
     setFormData(INITIAL_FORM);
-    setInPatio(true);
     setErrors({});
     setEditingVehicleId(null);
   };
@@ -134,7 +132,6 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
 
       if (editingVehicleId) {
         await vehicleCatalogService.updateVehicle(editingVehicleId, formData);
-        await vehicleCatalogService.updatePatioStatus(editingVehicleId, inPatio);
         onSuccess('Veículo atualizado com sucesso');
       } else {
         await vehicleCatalogService.createVehicle(formData);
@@ -169,7 +166,6 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
       fixed_driver_name: vehicle.fixed_driver_name || '',
       status: vehicle.status,
     });
-    setInPatio(vehicle.in_patio);
     setErrors({});
   };
 
@@ -379,26 +375,6 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
               </div>
               {errors.status && <p className="text-sm text-red-600">{errors.status}</p>}
             </div>
-
-            {editingVehicleId && (
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-gray-700">Disponibilidade no pátio</label>
-                <button
-                  type="button"
-                  onClick={() => setInPatio((prev) => !prev)}
-                  className={`w-full rounded-xl px-4 py-3 text-sm font-semibold border transition-all ${
-                    inPatio
-                      ? 'bg-green-50 text-green-700 border-green-300'
-                      : 'bg-amber-50 text-amber-700 border-amber-300'
-                  }`}
-                >
-                  {inPatio ? 'Disponível no pátio' : 'Fora do pátio'}
-                </button>
-                <p className="text-xs text-gray-500">
-                  Marque "Disponível no pátio" para o veículo voltar a aparecer nas retiradas.
-                </p>
-              </div>
-            )}
 
             <div className="flex gap-3 pt-2">
               <button

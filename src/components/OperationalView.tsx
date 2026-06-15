@@ -352,12 +352,31 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
     [openMovements]
   );
 
+  // Disponibilidade ao vivo: placa indisponível = tem movimentação operacional
+  // "Em aberto" OU registro de retirada "Em uso". Fonte confiável, não depende da
+  // flag in_patio (que pode desincronizar). Mesma regra do picker de retirada.
+  const unavailableVehiclePlates = useMemo(() => {
+    const plates = new Set<string>();
+    openMovements.forEach((movement) => {
+      if (movement.vehicle_plate) plates.add(normalizeLookupValue(movement.vehicle_plate));
+    });
+    historyRecords.forEach((record) => {
+      if (record.status === 'Em uso' && record.vehicle_plate) {
+        plates.add(normalizeLookupValue(record.vehicle_plate));
+      }
+    });
+    return plates;
+  }, [openMovements, historyRecords]);
+
   const vehiclesInPatio = useMemo(
     () =>
       vehicles.filter(
-        (vehicle) => vehicle.status === 'Ativo' && vehicle.in_patio && !vehicle.fixed_driver_name?.trim()
+        (vehicle) =>
+          vehicle.status === 'Ativo' &&
+          !vehicle.fixed_driver_name?.trim() &&
+          !unavailableVehiclePlates.has(normalizeLookupValue(vehicle.plate))
       ),
-    [vehicles]
+    [vehicles, unavailableVehiclePlates]
   );
 
   const filteredVehiclesInPatio = useMemo(() => {
@@ -589,7 +608,7 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
       return;
     }
 
-    if (!vehicleMatch.in_patio || openVehicleIds.has(vehicleMatch.id)) {
+    if (unavailableVehiclePlates.has(normalizeLookupValue(vehicleMatch.plate)) || openVehicleIds.has(vehicleMatch.id)) {
       const openMovement = openMovements.find((movement) => movement.vehicle_id === vehicleMatch.id || movement.vehicle_plate === vehicleMatch.plate);
       if (openMovement) {
         openExitModal(openMovement);
@@ -716,7 +735,7 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
       return;
     }
 
-    if (!selectedVehicle.in_patio) {
+    if (unavailableVehiclePlates.has(normalizeLookupValue(selectedVehicle.plate))) {
       onError('Esse veículo já está fora do pátio. Registre a entrada para liberá-lo novamente.');
       return;
     }
