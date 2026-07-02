@@ -23,6 +23,7 @@ import { Input } from './Input';
 import { Modal } from './Modal';
 import { Textarea } from './Textarea';
 import { BarcodeScanner } from './BarcodeScanner';
+import { AccessControlView } from './AccessControlView';
 import { vehicleCatalogService } from '../services/vehicleCatalogService';
 import { vehicleService } from '../services/vehicleService';
 import { operationalService } from '../services/operationalService';
@@ -40,11 +41,12 @@ import type {
 
 interface OperationalViewProps {
   initialVehicleLookup?: string;
+  initialAccessLookup?: string;
   onSuccess: (message: string) => void;
   onError: (message: string) => void;
 }
 
-type OperationalTab = 'entrada' | 'saida' | 'motoristas' | 'timeline' | 'relatorios';
+type OperationalTab = 'entrada' | 'saida' | 'visitantes' | 'motoristas' | 'timeline' | 'relatorios';
 type DriverStatusFilter = 'Todos' | 'Ativos' | 'Inativos' | 'Regulares' | 'Vencendo' | 'Vencidas' | 'Pendentes';
 type DriverSort = 'name' | 'validity' | 'movements';
 type ChecklistItemState = { ok: boolean; note: string };
@@ -228,18 +230,18 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex min-w-max shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${
+      className={`flex min-w-[150px] shrink-0 items-center justify-center gap-2 overflow-hidden rounded-xl px-3 py-3 text-sm font-semibold transition-all xl:min-w-0 ${
         active ? 'bg-red-600 text-white shadow-md' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
       }`}
     >
-      {icon}
-      <span>{label}</span>
+      <span className="shrink-0">{icon}</span>
+      <span className="truncate">{label}</span>
     </button>
   );
 }
 
-export function OperationalView({ initialVehicleLookup = '', onSuccess, onError }: OperationalViewProps) {
-  const [activeTab, setActiveTab] = useState<OperationalTab>('saida');
+export function OperationalView({ initialVehicleLookup = '', initialAccessLookup = '', onSuccess, onError }: OperationalViewProps) {
+  const [activeTab, setActiveTab] = useState<OperationalTab>(initialAccessLookup ? 'visitantes' : 'saida');
   const [vehicles, setVehicles] = useState<FleetVehicle[]>([]);
   const [drivers, setDrivers] = useState<DriverRecord[]>([]);
   const [movements, setMovements] = useState<OperationalMovement[]>([]);
@@ -1064,7 +1066,7 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
         </div>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-1 xl:grid xl:grid-cols-5 xl:gap-3 xl:overflow-visible">
+      <div className="flex gap-2 overflow-x-auto pb-1 xl:grid xl:grid-cols-6 xl:gap-3 xl:overflow-visible">
         <TabButton
           active={activeTab === 'entrada'}
           onClick={() => setActiveTab('entrada')}
@@ -1084,6 +1086,12 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
           label="Motoristas"
         />
         <TabButton
+          active={activeTab === 'visitantes'}
+          onClick={() => setActiveTab('visitantes')}
+          icon={<UserCheck className="w-4 h-4" />}
+          label="Visitantes/Terceiros"
+        />
+        <TabButton
           active={activeTab === 'timeline'}
           onClick={() => setActiveTab('timeline')}
           icon={<Timer className="w-4 h-4" />}
@@ -1096,6 +1104,14 @@ export function OperationalView({ initialVehicleLookup = '', onSuccess, onError 
           label="Relatórios"
         />
       </div>
+
+      {activeTab === 'visitantes' && (
+        <AccessControlView
+          initialLookup={initialAccessLookup}
+          onSuccess={onSuccess}
+          onError={onError}
+        />
+      )}
 
       {activeTab === 'saida' && (
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">

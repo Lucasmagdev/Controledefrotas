@@ -9,7 +9,7 @@ import type {
 } from '../types/database';
 
 const PHOTO_BUCKET = 'vehicle-operation-photos';
-const DRIVER_CNH_BUCKET = 'driver-cnh-documents';
+const DRIVER_CNH_BUCKET = 'person-documents';
 
 const CHECKLIST_LABELS: Record<string, string> = {
   pneus: 'Pneus e estepe',
@@ -121,8 +121,9 @@ async function upsertChecklistItems(
     };
   });
 
-  const { error } = await (supabase.from('operational_checklist_items') as any)
-    .upsert(rows, { onConflict: 'movement_id,phase,item_key' });
+  const { error } = await supabase
+    .from('operational_checklist_items')
+    .upsert(rows as never, { onConflict: 'movement_id,phase,item_key' });
 
   if (error) {
     throw error;
@@ -144,7 +145,7 @@ function normalizeName(value: string) {
 
 export const operationalService = {
   async listDrivers(): Promise<DriverRecord[]> {
-    const { data, error } = await (supabase.from('drivers') as any).select('*').order('name', { ascending: true });
+    const { data, error } = await supabase.from('people').select('*').order('name', { ascending: true });
 
     if (error) {
       throw error;
@@ -156,16 +157,19 @@ export const operationalService = {
   async createDriver(input: DriverInput): Promise<DriverRecord> {
     const payload = {
       ...input,
+      person_type: input.person_type || 'Funcionario',
       name: input.name.trim(),
+      document_number: input.document_number?.trim() || null,
       cnh_number: input.cnh_number?.trim() ? normalizeText(input.cnh_number) : null,
       cnh_valid_until: input.cnh_valid_until?.trim() || null,
       origin: input.origin || 'manual',
       is_active: input.is_active ?? true,
       phone: input.phone?.trim() || '',
+      company: input.company?.trim() || '',
       notes: input.notes?.trim() || '',
     };
 
-    const { data, error } = await (supabase.from('drivers') as any).insert(payload).select().single();
+    const { data, error } = await supabase.from('people').insert(payload as never).select().single();
 
     if (error) {
       throw error;
@@ -177,7 +181,9 @@ export const operationalService = {
   async updateDriver(id: string, input: Partial<DriverInput>): Promise<DriverRecord> {
     const payload = {
       ...input,
+      ...(input.person_type ? { person_type: input.person_type } : {}),
       ...(input.name ? { name: input.name.trim() } : {}),
+      ...(input.document_number !== undefined ? { document_number: input.document_number?.trim() || null } : {}),
       ...(input.cnh_number !== undefined
         ? { cnh_number: input.cnh_number?.trim() ? normalizeText(input.cnh_number) : null }
         : {}),
@@ -187,11 +193,12 @@ export const operationalService = {
       ...(input.origin ? { origin: input.origin } : {}),
       ...(input.is_active !== undefined ? { is_active: input.is_active } : {}),
       ...(input.phone !== undefined ? { phone: input.phone.trim() } : {}),
+      ...(input.company !== undefined ? { company: input.company.trim() } : {}),
       ...(input.notes !== undefined ? { notes: input.notes.trim() } : {}),
       updated_at: new Date().toISOString(),
     };
 
-    const { data, error } = await (supabase.from('drivers') as any).update(payload).eq('id', id).select().single();
+    const { data, error } = await supabase.from('people').update(payload as never).eq('id', id).select().single();
 
     if (error) {
       throw error;
@@ -225,9 +232,10 @@ export const operationalService = {
     const { data: publicUrlData } = supabase.storage.from(DRIVER_CNH_BUCKET).getPublicUrl(filePath);
 
     try {
+      const { data: signed } = await supabase.storage.from(DRIVER_CNH_BUCKET).createSignedUrl(filePath, 60 * 60);
       const updatedDriver = await this.updateDriver(driver.id, {
         cnh_file_path: filePath,
-        cnh_file_url: publicUrlData.publicUrl,
+        cnh_file_url: signed?.signedUrl || publicUrlData.publicUrl,
         cnh_file_name: file.name,
         cnh_file_type: file.type || null,
       });
@@ -244,23 +252,30 @@ export const operationalService = {
   },
 
   async deleteDriver(id: string): Promise<void> {
-    const { data: driver } = await (supabase.from('drivers') as any)
-      .select('cnh_file_path')
-      .eq('id', id)
-      .maybeSingle();
-    const { error } = await (supabase.from('drivers') as any).delete().eq('id', id);
+    const { error } = await supabase
+      .from('people')
+      .update({ is_active: false, updated_at: new Date().toISOString() } as never)
+      .eq('id', id);
 
     if (error) {
       throw error;
     }
+  },
 
-    if (driver?.cnh_file_path) {
-      await supabase.storage.from(DRIVER_CNH_BUCKET).remove([driver.cnh_file_path]);
+  async getDriverCnhUrl(driver: DriverRecord): Promise<string | null> {
+    if (!driver.cnh_file_path) {
+      return driver.cnh_file_url || null;
     }
+
+    const { data, error } = await supabase.storage.from(DRIVER_CNH_BUCKET).createSignedUrl(driver.cnh_file_path, 60 * 10);
+    if (error) {
+      return driver.cnh_file_url || null;
+    }
+    return data.signedUrl;
   },
 
   async listMovements(): Promise<OperationalMovement[]> {
-    const { data, error } = await (supabase.from('operational_movements') as any).select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('operational_movements').select('*').order('created_at', { ascending: false });
 
     if (error) {
       throw error;
@@ -273,7 +288,7 @@ export const operationalService = {
     input: MovementInput,
     entryPhotos: File[] = []
   ): Promise<OperationalMovement> {
-    const { data: movement, error } = await (supabase.from('operational_movements') as any).insert({
+    const { data: movementData, error } = await supabase.from('operational_movements').insert({
         ...input,
         vehicle_plate: normalizeText(input.vehicle_plate),
         driver_name: input.driver_name.trim(),
@@ -282,25 +297,28 @@ export const operationalService = {
         qr_identifier: input.qr_identifier?.trim() || '',
         entry_observations: input.entry_observations?.trim() || '',
         status: 'Em aberto',
-      }).select().single();
+      } as never).select().single();
 
     if (error) {
       throw error;
     }
 
-    const { error: vehicleStatusError } = await (supabase.from('vehicles') as any)
-      .update({ in_patio: false, updated_at: new Date().toISOString() })
+    const { error: vehicleStatusError } = await supabase
+      .from('vehicles')
+      .update({ in_patio: false, updated_at: new Date().toISOString() } as never)
       .eq('id', input.vehicle_id);
 
     if (vehicleStatusError) {
       throw vehicleStatusError;
     }
 
+    const movement = movementData as unknown as OperationalMovement;
+
     await upsertChecklistItems(movement.id, 'Saida', input.checklist, 'exit');
 
     if (entryPhotos.length > 0) {
       const photoRows = await uploadPhotos(movement.id, 'Saida', entryPhotos);
-      const { error: photoError } = await (supabase.from('operational_photos') as any).insert(photoRows);
+      const { error: photoError } = await supabase.from('operational_photos').insert(photoRows as never);
 
       if (photoError) {
         throw photoError;
@@ -315,7 +333,7 @@ export const operationalService = {
     input: MovementCloseInput,
     exitPhotos: File[] = []
   ): Promise<OperationalMovement> {
-    const { data: movement, error } = await (supabase.from('operational_movements') as any).update({
+    const { data: movementData, error } = await supabase.from('operational_movements').update({
         ...(input.driver_id !== undefined ? { driver_id: input.driver_id } : {}),
         ...(input.driver_name !== undefined ? { driver_name: input.driver_name.trim() } : {}),
         ...(input.driver_cnh_number !== undefined
@@ -332,14 +350,17 @@ export const operationalService = {
         checklist: input.checklist,
         status: 'Concluida',
         updated_at: new Date().toISOString(),
-      }).eq('id', id).select().single();
+      } as never).eq('id', id).select().single();
 
     if (error) {
       throw error;
     }
 
-    const { error: vehicleStatusError } = await (supabase.from('vehicles') as any)
-      .update({ in_patio: true, updated_at: new Date().toISOString() })
+    const movement = movementData as unknown as OperationalMovement;
+
+    const { error: vehicleStatusError } = await supabase
+      .from('vehicles')
+      .update({ in_patio: true, updated_at: new Date().toISOString() } as never)
       .eq('id', movement.vehicle_id);
 
     if (vehicleStatusError) {
@@ -350,7 +371,7 @@ export const operationalService = {
 
     if (exitPhotos.length > 0) {
       const photoRows = await uploadPhotos(movement.id, 'Entrada', exitPhotos);
-      const { error: photoError } = await (supabase.from('operational_photos') as any).insert(photoRows);
+      const { error: photoError } = await supabase.from('operational_photos').insert(photoRows as never);
 
       if (photoError) {
         throw photoError;
@@ -361,12 +382,13 @@ export const operationalService = {
   },
 
   async deleteMovement(id: string): Promise<void> {
-    const { data: movement } = await (supabase.from('operational_movements') as any)
+    const { data: movementData } = await supabase
+      .from('operational_movements')
       .select('vehicle_id, status')
       .eq('id', id)
       .maybeSingle();
 
-    const { error } = await (supabase.from('operational_movements') as any).delete().eq('id', id);
+    const { error } = await supabase.from('operational_movements').delete().eq('id', id);
 
     if (error) {
       throw error;
@@ -374,9 +396,12 @@ export const operationalService = {
 
     // Movimento "Em aberto" tinha tirado o veículo do pátio. Apagar sem devolução
     // deixaria in_patio travado em false, sumindo das retiradas. Restaura aqui.
+    const movement = movementData as unknown as Pick<OperationalMovement, 'vehicle_id' | 'status'> | null;
+
     if (movement?.status === 'Em aberto' && movement.vehicle_id) {
-      const { error: patioError } = await (supabase.from('vehicles') as any)
-        .update({ in_patio: true, updated_at: new Date().toISOString() })
+      const { error: patioError } = await supabase
+        .from('vehicles')
+        .update({ in_patio: true, updated_at: new Date().toISOString() } as never)
         .eq('id', movement.vehicle_id);
 
       if (patioError) {
