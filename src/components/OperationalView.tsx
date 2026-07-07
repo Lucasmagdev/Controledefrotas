@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Dispatch, FormEvent, ReactNode, SetStateAction } from 'react';
 import {
   CalendarDays,
+  Building2,
   Camera,
   CheckCircle2,
   ClipboardCheck,
@@ -16,6 +17,7 @@ import {
   Save,
   Trash2,
   Truck,
+  UserRoundPlus,
   UserCheck,
   Users,
 } from 'lucide-react';
@@ -72,6 +74,7 @@ const CHECKLIST_ITEMS = [
 const FUEL_OPTIONS: FuelLevel[] = ['Reserva', '1/4', '1/2', '3/4', 'Cheio'];
 const OPERATION_OPTIONS: OperationType[] = ['Obras', 'Trajeto curto', 'Viagem'];
 const VEHICLE_STATUS_OPTIONS = ['Ativo', 'Inativo', 'Em Manut.'] as const;
+const TRANSVELENTIM_ALIASES = ['transvelentim', 'transvalentim'];
 
 type PatioVehicleEditForm = {
   plate: string;
@@ -93,6 +96,11 @@ function normalizeText(value: string) {
 
 function normalizeLookupValue(value: string) {
   return normalizeText(value).replace(/\s+/g, '');
+}
+
+function isTransvelentimText(value?: string | null) {
+  const normalized = normalizeLookupValue(value || '');
+  return TRANSVELENTIM_ALIASES.some((alias) => normalized.includes(alias));
 }
 
 function formatShortCode(value?: string | null) {
@@ -267,6 +275,8 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
   const [entrySearch, setEntrySearch] = useState('');
   const [vehiclePickerSearch, setVehiclePickerSearch] = useState('');
   const [driverPickerSearch, setDriverPickerSearch] = useState('');
+  const [transvelentimMode, setTransvelentimMode] = useState(false);
+  const [transvelentimDriverName, setTransvelentimDriverName] = useState('');
   const [entryChecklist, setEntryChecklist] = useState<ChecklistGroup>(createChecklistState());
   const [entryPhotos, setEntryPhotos] = useState<File[]>([]);
   const [entryForm, setEntryForm] = useState(() => createEntryFormDefaults());
@@ -392,9 +402,20 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
     );
   }, [vehiclesInPatio, vehiclePickerSearch]);
 
+  const transvelentimVehicles = useMemo(
+    () =>
+      vehicles.filter(
+        (vehicle) =>
+          vehicle.status === 'Ativo' &&
+          !unavailableVehiclePlates.has(normalizeLookupValue(vehicle.plate)) &&
+          [vehicle.responsible_name, vehicle.fixed_driver_name, vehicle.name, vehicle.plate].some(isTransvelentimText)
+      ),
+    [unavailableVehiclePlates, vehicles]
+  );
+
   const selectedVehicle = useMemo(
-    () => vehiclesInPatio.find((vehicle) => vehicle.id === selectedVehicleId) || null,
-    [vehiclesInPatio, selectedVehicleId]
+    () => [...vehiclesInPatio, ...transvelentimVehicles].find((vehicle) => vehicle.id === selectedVehicleId) || null,
+    [transvelentimVehicles, vehiclesInPatio, selectedVehicleId]
   );
 
   const activeDrivers = useMemo(
@@ -724,6 +745,8 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
     setEntrySearch('');
     setVehiclePickerSearch('');
     setDriverPickerSearch('');
+    setTransvelentimMode(false);
+    setTransvelentimDriverName('');
     setEntryChecklist(createChecklistState());
     setEntryPhotos([]);
     setEntryForm(createEntryFormDefaults());
@@ -752,6 +775,11 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
       return;
     }
 
+    if (transvelentimMode && !transvelentimDriverName.trim()) {
+      onError('Informe o nome do motorista da Transvalentim');
+      return;
+    }
+
     const entryOdometer = Number(entryForm.entry_odometer);
     if (Number.isNaN(entryOdometer) || entryOdometer < 0) {
       onError('Informe um odômetro de saída válido');
@@ -765,15 +793,18 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
 
     try {
       setMovementSaving(true);
+      const hasTransvelentimDriver = transvelentimDriverName.trim().length > 0;
+      const driverNameForMovement = transvelentimDriverName.trim() || selectedDriver?.name || 'Não informado';
+
       await operationalService.createMovement(
         {
           vehicle_id: selectedVehicle.id,
           vehicle_plate: selectedVehicle.plate,
           operation_type: entryForm.operation_type,
-          driver_id: selectedDriver?.id || null,
-          driver_name: selectedDriver?.name || 'Não informado',
-          driver_cnh_number: selectedDriver?.cnh_number?.trim() || null,
-          driver_cnh_valid_until: selectedDriver?.cnh_valid_until || null,
+          driver_id: hasTransvelentimDriver ? null : selectedDriver?.id || null,
+          driver_name: driverNameForMovement,
+          driver_cnh_number: hasTransvelentimDriver ? null : selectedDriver?.cnh_number?.trim() || null,
+          driver_cnh_valid_until: hasTransvelentimDriver ? null : selectedDriver?.cnh_valid_until || null,
           qr_identifier: entryForm.qr_identifier || selectedVehicle.short_code || selectedVehicle.id,
           entry_date: entryForm.entry_date,
           entry_time: entryForm.entry_time,
@@ -1128,6 +1159,117 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
             </div>
 
             <form onSubmit={handleEntrySubmit} className="space-y-6">
+              <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="grid gap-4 bg-slate-950 p-4 text-white sm:grid-cols-[1fr_auto] sm:items-center">
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-xl bg-white/10 p-2">
+                      <Building2 className="h-5 w-5 text-cyan-200" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-cyan-200">Entrada terceirizada</p>
+                      <h4 className="text-lg font-bold leading-tight">Transvalentim</h4>
+                      <p className="mt-1 text-sm text-slate-300">
+                        Selecione o munck da empresa e informe o motorista que chegou no dia.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextMode = !transvelentimMode;
+                      setTransvelentimMode(nextMode);
+                      if (nextMode) {
+                        setEntryForm((prev) => ({ ...prev, driver_id: '', operation_type: 'Obras' }));
+                        setDriverPickerSearch('');
+                      } else {
+                        setTransvelentimDriverName('');
+                      }
+                    }}
+                    className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition-all ${
+                      transvelentimMode
+                        ? 'bg-cyan-300 text-slate-950 hover:bg-cyan-200'
+                        : 'bg-white text-slate-900 hover:bg-slate-100'
+                    }`}
+                  >
+                    <Truck className="h-4 w-4" />
+                    {transvelentimMode ? 'Modo ativo' : 'Usar Transvalentim'}
+                  </button>
+                </div>
+
+                {transvelentimMode && (
+                  <div className="space-y-4 p-4">
+                    <div className="space-y-3">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-gray-900">Muncks disponíveis</p>
+                          <p className="text-xs text-gray-500">{transvelentimVehicles.length} placa(s) encontrada(s) no pátio</p>
+                        </div>
+                        <span className="self-start sm:self-auto">
+                          <Badge tone={selectedVehicle && isTransvelentimText(`${selectedVehicle.name} ${selectedVehicle.responsible_name}`) ? 'success' : 'info'}>
+                            {selectedVehicle ? selectedVehicle.plate : 'Selecione'}
+                          </Badge>
+                        </span>
+                      </div>
+
+                      {transvelentimVehicles.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-cyan-300 bg-cyan-50 p-4 text-sm text-cyan-900">
+                          Cadastre as placas da empresa com nome ou responsável contendo Transvalentim para aparecerem aqui.
+                        </div>
+                      ) : (
+                        <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+                          {transvelentimVehicles.map((vehicle) => (
+                            <button
+                              key={vehicle.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedVehicleId(vehicle.id);
+                                setVehiclePickerSearch(vehicle.plate);
+                                setEntrySearch(vehicle.short_code || vehicle.plate);
+                                setEntryForm((prev) => ({
+                                  ...prev,
+                                  operation_type: 'Obras',
+                                  qr_identifier: vehicle.short_code || vehicle.plate,
+                                }));
+                              }}
+                              className={`flex w-full items-center justify-between gap-3 rounded-xl border p-3 text-left transition-all ${
+                                selectedVehicleId === vehicle.id
+                                  ? 'border-cyan-500 bg-cyan-50 ring-2 ring-cyan-100'
+                                  : 'border-gray-200 bg-gray-50 hover:border-cyan-300 hover:bg-white'
+                              }`}
+                            >
+                              <span className="min-w-0">
+                                <span className="block text-base font-black text-gray-900">{vehicle.plate}</span>
+                                <span className="block truncate text-xs text-gray-600">{vehicle.name}</span>
+                              </span>
+                              <span className="shrink-0 rounded-lg bg-white px-2 py-1 text-xs font-semibold text-gray-500">
+                                {formatShortCode(vehicle.short_code)}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="min-w-0 rounded-xl border border-gray-200 bg-gray-50 p-4">
+                      <div className="mb-3 flex items-center gap-2">
+                        <UserRoundPlus className="h-4 w-4 text-cyan-700" />
+                        <p className="text-sm font-bold text-gray-900">Motorista do dia</p>
+                      </div>
+                      <Input
+                        label="Nome do motorista"
+                        value={transvelentimDriverName}
+                        onChange={(event) => setTransvelentimDriverName(event.target.value)}
+                        placeholder="Ex: João da Silva"
+                        required={transvelentimMode}
+                      />
+                      <p className="mt-3 text-xs text-gray-500">
+                        O nome fica gravado no checklist desta saída sem prender o motorista a uma placa fixa.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </section>
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-2 sm:gap-3">
@@ -1201,11 +1343,13 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
                       value={driverPickerSearch}
                       onChange={(event) => setDriverPickerSearch(event.target.value)}
                       placeholder="Digite nome, código ou CNH"
+                      disabled={transvelentimMode}
                       className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm focus:border-red-500 focus:ring-4 focus:ring-red-100"
                     />
                     <select
                       value={entryForm.driver_id}
                       onChange={(event) => setEntryForm((prev) => ({ ...prev, driver_id: event.target.value }))}
+                      disabled={transvelentimMode}
                       className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 focus:border-red-500 focus:ring-4 focus:ring-red-100"
                     >
                       <option value="">Selecione um motorista...</option>
@@ -1220,7 +1364,9 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
                     <p className="text-xs text-gray-500">
                       O motorista é apenas uma informação da operação e pode ser alterado sem mudar o veículo.
                     </p>
-                    {selectedDriver ? (
+                    {transvelentimMode ? (
+                      <p className="text-xs text-cyan-700">Motorista informado no painel da Transvalentim acima.</p>
+                    ) : selectedDriver ? (
                       <p className="text-xs text-gray-500">
                         {selectedDriver.cnh_number ? `CNH ${selectedDriver.cnh_number}` : 'Número da CNH não informado'}
                         {' | '}

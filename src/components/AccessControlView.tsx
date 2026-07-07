@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import {
+  Building2,
   CalendarDays,
   DoorOpen,
   FileText,
@@ -8,14 +9,17 @@ import {
   Plus,
   QrCode,
   Search,
+  Truck,
+  UserRoundPlus,
 } from 'lucide-react';
 import { Input } from './Input';
 import { Modal } from './Modal';
 import { Textarea } from './Textarea';
 import { BarcodeScanner } from './BarcodeScanner';
 import { accessControlService } from '../services/accessControlService';
+import { vehicleCatalogService } from '../services/vehicleCatalogService';
 import { formatDateBR, toDateInputValue } from '../utils/date';
-import type { AccessRecord, AccessStatus, PersonalVehicle, PersonRecord, PersonType } from '../types/database';
+import type { AccessRecord, AccessStatus, FleetVehicle, PersonalVehicle, PersonRecord, PersonType } from '../types/database';
 
 interface AccessControlViewProps {
   initialLookup?: string;
@@ -27,6 +31,7 @@ type AccessTab = 'entrada' | 'historico';
 type EntryKind = 'Funcionario' | 'Visitante' | 'Terceirizado';
 
 const PERSON_TYPES: PersonType[] = ['Funcionario', 'Terceirizado', 'Visitante'];
+const TRANSVELENTIM_ALIASES = ['transvelentim', 'transvalentim'];
 
 function getCurrentTimeValue() {
   const now = new Date();
@@ -40,6 +45,11 @@ function normalizeLookup(value: string) {
     .replace(/\s+/g, '')
     .trim()
     .toLowerCase();
+}
+
+function isTransvelentimText(value?: string | null) {
+  const normalized = normalizeLookup(value || '');
+  return TRANSVELENTIM_ALIASES.some((alias) => normalized.includes(alias));
 }
 
 function extractLookupValue(value: string) {
@@ -93,6 +103,7 @@ export function AccessControlView({ initialLookup = '', onSuccess, onError }: Ac
   const [activeTab, setActiveTab] = useState<AccessTab>('entrada');
   const [people, setPeople] = useState<PersonRecord[]>([]);
   const [vehicles, setVehicles] = useState<PersonalVehicle[]>([]);
+  const [fleetVehicles, setFleetVehicles] = useState<FleetVehicle[]>([]);
   const [records, setRecords] = useState<AccessRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -107,6 +118,7 @@ export function AccessControlView({ initialLookup = '', onSuccess, onError }: Ac
   const [externalName, setExternalName] = useState('');
   const [externalDocument, setExternalDocument] = useState('');
   const [externalCompany, setExternalCompany] = useState('');
+  const [transvelentimMode, setTransvelentimMode] = useState(false);
   const [entryDate, setEntryDate] = useState(toDateInputValue(new Date()));
   const [entryTime, setEntryTime] = useState(getCurrentTimeValue());
   const [observations, setObservations] = useState('');
@@ -122,13 +134,15 @@ export function AccessControlView({ initialLookup = '', onSuccess, onError }: Ac
   const loadData = async () => {
     try {
       setLoading(true);
-      const [peopleData, vehicleData, recordData] = await Promise.all([
+      const [peopleData, vehicleData, fleetVehicleData, recordData] = await Promise.all([
         accessControlService.listPeople(),
         accessControlService.listPersonalVehicles(),
+        vehicleCatalogService.listVehicles(),
         accessControlService.listAccessRecords(),
       ]);
       setPeople(peopleData);
       setVehicles(vehicleData);
+      setFleetVehicles(fleetVehicleData);
       setRecords(recordData);
     } catch (error) {
       console.error('Erro ao carregar portaria:', error);
@@ -156,6 +170,15 @@ export function AccessControlView({ initialLookup = '', onSuccess, onError }: Ac
   const selectedPerson = useMemo(() => people.find((person) => person.id === selectedPersonId) || null, [people, selectedPersonId]);
   const selectedVehicle = useMemo(() => vehicles.find((vehicle) => vehicle.id === selectedVehicleId) || null, [vehicles, selectedVehicleId]);
   const openRecords = useMemo(() => records.filter((record) => record.status === 'Em aberto'), [records]);
+  const transvelentimVehicles = useMemo(
+    () =>
+      fleetVehicles.filter(
+        (vehicle) =>
+          vehicle.status === 'Ativo' &&
+          [vehicle.responsible_name, vehicle.fixed_driver_name, vehicle.name, vehicle.plate].some(isTransvelentimText)
+      ),
+    [fleetVehicles]
+  );
 
   const personVehicles = useMemo(
     () => vehicles.filter((vehicle) => vehicle.is_active && vehicle.person_id === selectedPersonId),
@@ -232,6 +255,7 @@ export function AccessControlView({ initialLookup = '', onSuccess, onError }: Ac
     setExternalName('');
     setExternalDocument('');
     setExternalCompany('');
+    setTransvelentimMode(false);
     setEntryDate(toDateInputValue(new Date()));
     setEntryTime(getCurrentTimeValue());
     setObservations('');
@@ -392,6 +416,7 @@ export function AccessControlView({ initialLookup = '', onSuccess, onError }: Ac
                     setSelectedVehicleId('');
                     setManualPlate('');
                     setDocumentFile(null);
+                    setTransvelentimMode(false);
                   }}
                   className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 focus:border-red-500 focus:ring-4 focus:ring-red-100"
                 >
@@ -447,6 +472,104 @@ export function AccessControlView({ initialLookup = '', onSuccess, onError }: Ac
               </div>
               ) : (
                 <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-4">
+                  {entryKind === 'Terceirizado' && (
+                    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                      <div className="grid gap-4 bg-slate-950 p-4 text-white sm:grid-cols-[1fr_auto] sm:items-center">
+                        <div className="flex items-start gap-3">
+                          <div className="rounded-xl bg-white/10 p-2">
+                            <Building2 className="h-5 w-5 text-cyan-200" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold uppercase tracking-wide text-cyan-200">Terceirizado frequente</p>
+                            <h4 className="text-lg font-bold leading-tight">Transvalentim</h4>
+                            <p className="mt-1 text-sm text-slate-300">Motorista variável, munck selecionado na entrada.</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nextMode = !transvelentimMode;
+                            setTransvelentimMode(nextMode);
+                            if (nextMode) {
+                              setExternalCompany('Transvalentim');
+                              setReason((current) => current || 'Serviço com munck');
+                            } else {
+                              setManualPlate('');
+                            }
+                          }}
+                          className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition-all ${
+                            transvelentimMode
+                              ? 'bg-cyan-300 text-slate-950 hover:bg-cyan-200'
+                              : 'bg-white text-slate-900 hover:bg-slate-100'
+                          }`}
+                        >
+                          <Truck className="h-4 w-4" />
+                          {transvelentimMode ? 'Modo ativo' : 'Usar Transvalentim'}
+                        </button>
+                      </div>
+
+                      {transvelentimMode && (
+                        <div className="space-y-4 p-4">
+                          <div className="space-y-3">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                              <div className="min-w-0">
+                                <p className="text-sm font-bold text-gray-900">Muncks cadastrados</p>
+                                <p className="text-xs text-gray-500">{transvelentimVehicles.length} placa(s) encontrada(s)</p>
+                              </div>
+                              <span className="self-start sm:self-auto">
+                                <Badge tone={manualPlate ? 'success' : 'info'}>{manualPlate || 'Selecione'}</Badge>
+                              </span>
+                            </div>
+
+                            {transvelentimVehicles.length === 0 ? (
+                              <div className="rounded-xl border border-dashed border-cyan-300 bg-cyan-50 p-4 text-sm text-cyan-900">
+                                Cadastre as placas com nome ou responsável contendo Transvalentim para aparecerem aqui.
+                              </div>
+                            ) : (
+                              <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+                                {transvelentimVehicles.map((vehicle) => (
+                                  <button
+                                    key={vehicle.id}
+                                    type="button"
+                                    onClick={() => setManualPlate(vehicle.plate)}
+                                    className={`flex w-full items-center justify-between gap-3 rounded-xl border p-3 text-left transition-all ${
+                                      manualPlate === vehicle.plate
+                                        ? 'border-cyan-500 bg-cyan-50 ring-2 ring-cyan-100'
+                                        : 'border-gray-200 bg-gray-50 hover:border-cyan-300 hover:bg-white'
+                                    }`}
+                                  >
+                                    <span className="min-w-0">
+                                      <span className="block text-base font-black text-gray-900">{vehicle.plate}</span>
+                                      <span className="block truncate text-xs text-gray-600">{vehicle.name}</span>
+                                    </span>
+                                    <span className="shrink-0 rounded-lg bg-white px-2 py-1 text-xs font-semibold text-gray-500">
+                                      {vehicle.short_code || '-----'}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="min-w-0 rounded-xl border border-gray-200 bg-gray-50 p-4">
+                            <div className="mb-3 flex items-center gap-2">
+                              <UserRoundPlus className="h-4 w-4 text-cyan-700" />
+                              <p className="text-sm font-bold text-gray-900">Motorista do dia</p>
+                            </div>
+                            <Input
+                              label="Nome do motorista"
+                              value={externalName}
+                              onChange={(event) => setExternalName(event.target.value)}
+                              placeholder="Ex: João da Silva"
+                              required
+                            />
+                            <p className="mt-3 text-xs text-gray-500">O nome fica registrado na entrada sem vincular motorista fixo à placa.</p>
+                          </div>
+                        </div>
+                      )}
+                    </section>
+                  )}
+
                   <div>
                     <h4 className="font-bold text-gray-900">
                       Dados do {entryKind === 'Visitante' ? 'visitante' : 'terceirizado'}
@@ -456,13 +579,15 @@ export function AccessControlView({ initialLookup = '', onSuccess, onError }: Ac
                     </p>
                   </div>
 
-                  <Input
-                    label="Nome da pessoa"
-                    value={externalName}
-                    onChange={(event) => setExternalName(event.target.value)}
-                    placeholder={entryKind === 'Visitante' ? 'Ex: Maria Silva' : 'Ex: Tecnico da empresa terceira'}
-                    required
-                  />
+                  {!(entryKind === 'Terceirizado' && transvelentimMode) && (
+                    <Input
+                      label="Nome da pessoa"
+                      value={externalName}
+                      onChange={(event) => setExternalName(event.target.value)}
+                      placeholder={entryKind === 'Visitante' ? 'Ex: Maria Silva' : 'Ex: Tecnico da empresa terceira'}
+                      required
+                    />
+                  )}
 
                   <Input
                     label="CPF/RG"
