@@ -19,7 +19,12 @@ export function Login({ onLogin }: LoginProps) {
 
     // Simular delay de autenticação
     setTimeout(() => {
-      if (username === 'admingontijo' && password === 'admin123') {
+      const users = [
+        { username: 'admingontijo', password: 'admin123' },
+        { username: 'gabriela', password: 'q9uJz!y$#!dHUH' },
+      ];
+      const match = users.find((u) => u.username === username && u.password === password);
+      if (match) {
         localStorage.setItem('isAuthenticated', 'true');
         onLogin();
       } else {
