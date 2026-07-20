@@ -70,6 +70,7 @@ export interface PersonRecord {
   cnh_file_type: string | null;
   origin: 'manual' | 'historico' | 'drivers';
   is_active: boolean;
+  is_driver: boolean;
   phone?: string | null;
   company?: string | null;
   notes?: string | null;
@@ -89,6 +90,7 @@ export interface PersonInput {
   cnh_file_type?: string | null;
   origin?: 'manual' | 'historico' | 'drivers';
   is_active?: boolean;
+  is_driver?: boolean;
   phone?: string;
   company?: string;
   notes?: string;

@@ -26,6 +26,7 @@ import { Modal } from './Modal';
 import { Textarea } from './Textarea';
 import { BarcodeScanner } from './BarcodeScanner';
 import { AccessControlView } from './AccessControlView';
+import { PedestriansView } from './PedestriansView';
 import { vehicleCatalogService } from '../services/vehicleCatalogService';
 import { vehicleService } from '../services/vehicleService';
 import { operationalService } from '../services/operationalService';
@@ -48,7 +49,7 @@ interface OperationalViewProps {
   onError: (message: string) => void;
 }
 
-type OperationalTab = 'entrada' | 'saida' | 'visitantes' | 'motoristas' | 'timeline' | 'relatorios';
+type OperationalTab = 'entrada' | 'saida' | 'visitantes' | 'pedestres' | 'motoristas' | 'timeline' | 'relatorios';
 type DriverStatusFilter = 'Todos' | 'Ativos' | 'Inativos' | 'Regulares' | 'Vencendo' | 'Vencidas' | 'Pendentes';
 type DriverSort = 'name' | 'validity' | 'movements';
 type ChecklistItemState = { ok: boolean; note: string };
@@ -1097,7 +1098,7 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
         </div>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-1 xl:grid xl:grid-cols-6 xl:gap-3 xl:overflow-visible">
+      <div className="flex gap-2 overflow-x-auto pb-1 xl:grid xl:grid-cols-7 xl:gap-3 xl:overflow-visible">
         <TabButton
           active={activeTab === 'entrada'}
           onClick={() => setActiveTab('entrada')}
@@ -1123,6 +1124,12 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
           label="Visitantes/Terceiros"
         />
         <TabButton
+          active={activeTab === 'pedestres'}
+          onClick={() => setActiveTab('pedestres')}
+          icon={<UserRoundPlus className="w-4 h-4" />}
+          label="Pedestres"
+        />
+        <TabButton
           active={activeTab === 'timeline'}
           onClick={() => setActiveTab('timeline')}
           icon={<Timer className="w-4 h-4" />}
@@ -1139,6 +1146,13 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
       {activeTab === 'visitantes' && (
         <AccessControlView
           initialLookup={initialAccessLookup}
+          onSuccess={onSuccess}
+          onError={onError}
+        />
+      )}
+
+      {activeTab === 'pedestres' && (
+        <PedestriansView
           onSuccess={onSuccess}
           onError={onError}
         />

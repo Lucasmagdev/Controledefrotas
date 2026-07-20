@@ -145,7 +145,11 @@ function normalizeName(value: string) {
 
 export const operationalService = {
   async listDrivers(): Promise<DriverRecord[]> {
-    const { data, error } = await supabase.from('people').select('*').order('name', { ascending: true });
+    const { data, error } = await supabase
+      .from('people')
+      .select('*')
+      .eq('is_driver', true)
+      .order('name', { ascending: true });
 
     if (error) {
       throw error;
@@ -164,6 +168,7 @@ export const operationalService = {
       cnh_valid_until: input.cnh_valid_until?.trim() || null,
       origin: input.origin || 'manual',
       is_active: input.is_active ?? true,
+      is_driver: true,
       phone: input.phone?.trim() || '',
       company: input.company?.trim() || '',
       notes: input.notes?.trim() || '',
@@ -192,6 +197,7 @@ export const operationalService = {
         : {}),
       ...(input.origin ? { origin: input.origin } : {}),
       ...(input.is_active !== undefined ? { is_active: input.is_active } : {}),
+      is_driver: true,
       ...(input.phone !== undefined ? { phone: input.phone.trim() } : {}),
       ...(input.company !== undefined ? { company: input.company.trim() } : {}),
       ...(input.notes !== undefined ? { notes: input.notes.trim() } : {}),

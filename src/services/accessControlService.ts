@@ -95,6 +95,7 @@ export const accessControlService = {
       cnh_valid_until: normalizeNullable(input.cnh_valid_until),
       origin: input.origin || 'manual',
       is_active: input.is_active ?? true,
+      is_driver: input.is_driver ?? false,
     };
 
     const { data, error } = await supabase.from('people').insert(payload as never).select().single();
@@ -120,12 +121,21 @@ export const accessControlService = {
       ...(input.cnh_file_type !== undefined ? { cnh_file_type: normalizeNullable(input.cnh_file_type) } : {}),
       ...(input.origin ? { origin: input.origin } : {}),
       ...(input.is_active !== undefined ? { is_active: input.is_active } : {}),
+      ...(input.is_driver !== undefined ? { is_driver: input.is_driver } : {}),
       updated_at: new Date().toISOString(),
     };
 
     const { data, error } = await supabase.from('people').update(payload as never).eq('id', id).select().single();
     if (error) throw error;
     return data;
+  },
+
+  async deactivatePerson(id: string): Promise<PersonRecord> {
+    return this.updatePerson(id, { is_active: false });
+  },
+
+  async reactivatePerson(id: string): Promise<PersonRecord> {
+    return this.updatePerson(id, { is_active: true });
   },
 
   async uploadPersonCnh(person: PersonRecord, file: File): Promise<PersonRecord> {
