@@ -22,6 +22,7 @@ export function Login({ onLogin }: LoginProps) {
       const users = [
         { username: 'admingontijo', password: 'admin123' },
         { username: 'gabriela', password: 'q9uJz!y$#!dHUH' },
+        { username: 'Marlon.nocci@gontijoengenharia.com.br', password: 'Marlon@2026' },
       ];
       const match = users.find((u) => u.username === username && u.password === password);
       if (match) {
