@@ -359,10 +359,16 @@ export function AccessControlView({ initialLookup = '', onSuccess, onError }: Ac
 
   const openDocument = async (record: AccessRecord) => {
     if (!record.document_file_path) return;
+    const newTab = window.open('', '_blank', 'noopener,noreferrer');
     try {
       const url = await accessControlService.getAccessDocumentUrl(record.document_file_path);
-      window.open(url, '_blank', 'noopener,noreferrer');
+      if (newTab) {
+        newTab.location.href = url;
+      } else {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
     } catch (error) {
+      newTab?.close();
       console.error('Erro ao abrir documento:', error);
       onError('Documento indisponivel');
     }
