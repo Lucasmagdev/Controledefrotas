@@ -90,11 +90,7 @@ export function DatabaseView({ onSuccess, onError, refreshTrigger }: DatabaseVie
 
   useEffect(() => {
     loadRecords();
-  }, [refreshTrigger]);
-
-  useEffect(() => {
-    loadRecords();
-  }, [searchTerm, statusFilter, recordFilterStart, recordFilterEnd]);
+  }, [refreshTrigger, searchTerm, statusFilter, recordFilterStart, recordFilterEnd]);
 
   useEffect(() => {
     loadVehiclesByDate();

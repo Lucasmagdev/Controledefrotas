@@ -8,6 +8,8 @@ import { OperationalView } from './components/OperationalView';
 import { Toast } from './components/Toast';
 import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { Login } from './components/Login';
+import type { UserRole } from './components/Login';
+import { InspectionBell } from './components/InspectionBell';
 import { vehicleService } from './services/vehicleService';
 import type { VehicleRecord } from './types/database';
 
@@ -39,6 +41,7 @@ function getStartupRoute() {
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userRole, setUserRole] = useState<UserRole>('admin');
   const startupRoute = getStartupRoute();
   const [activeTab, setActiveTab] = useState<Tab>(startupRoute.tab);
   const [operationalLookup] = useState(startupRoute.vehicleLookup);
@@ -57,6 +60,10 @@ function App() {
     const auth = localStorage.getItem('isAuthenticated');
     if (auth === 'true') {
       setIsAuthenticated(true);
+      const storedRole = localStorage.getItem('userRole');
+      if (storedRole === 'porteiro' || storedRole === 'admin') {
+        setUserRole(storedRole);
+      }
     }
   }, []);
 
@@ -69,13 +76,15 @@ function App() {
     }
   };
 
-  const handleLogin = () => {
+  const handleLogin = (role: UserRole) => {
     setIsAuthenticated(true);
+    setUserRole(role);
   };
 
   const handleLogout = () => {
     if (confirm('Deseja realmente sair do sistema?')) {
       localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('userRole');
       setIsAuthenticated(false);
       setActiveTab('form');
     }
@@ -130,6 +139,8 @@ function App() {
                 </p>
               </div>
             </div>
+
+            {userRole === 'porteiro' && <InspectionBell completedBy="lorena" />}
           </div>
         </div>
       </div>
@@ -190,6 +201,7 @@ function App() {
         {activeTab === 'vehicles' && (
           <div className="animate-fade-in">
             <VehiclesView
+              userRole={userRole}
               onSuccess={(message) => showToast(message, 'success')}
               onError={(message) => showToast(message, 'error')}
             />

@@ -224,6 +224,32 @@ export interface VehicleRecordInput {
   status: 'Em uso' | 'Devolvido';
 }
 
+export type InspectionStatus = 'Pendente' | 'Concluida';
+
+export interface VehicleInspectionRequest {
+  id: string;
+  vehicle_id: string;
+  vehicle_plate: string;
+  vehicle_name: string;
+  requested_by: string;
+  notes: string | null;
+  status: InspectionStatus;
+  checklist: Json | null;
+  completed_by: string | null;
+  completed_notes: string | null;
+  created_at: string;
+  updated_at: string;
+  completed_at: string | null;
+}
+
+export interface VehicleInspectionRequestInput {
+  vehicle_id: string;
+  vehicle_plate: string;
+  vehicle_name: string;
+  requested_by: string;
+  notes?: string;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -291,6 +317,11 @@ export interface Database {
         Row: OperationalChecklistItem;
         Insert: Omit<OperationalChecklistItem, 'id' | 'created_at' | 'updated_at'>;
         Update: Partial<Omit<OperationalChecklistItem, 'id' | 'created_at' | 'updated_at'>>;
+      };
+      vehicle_inspection_requests: {
+        Row: VehicleInspectionRequest;
+        Insert: Omit<VehicleInspectionRequest, 'id' | 'created_at' | 'updated_at' | 'status' | 'checklist' | 'completed_by' | 'completed_notes' | 'completed_at'>;
+        Update: Partial<Omit<VehicleInspectionRequest, 'id' | 'created_at' | 'updated_at'>>;
       };
     };
   };

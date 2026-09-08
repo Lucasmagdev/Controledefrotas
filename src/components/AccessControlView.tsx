@@ -190,7 +190,7 @@ export function AccessControlView({ initialLookup = '', onSuccess, onError }: Ac
     return activePeople.filter((person) => {
       if (person.person_type !== 'Funcionario') return false;
       if (!search) return true;
-      return [person.short_code, person.name, person.document_number || '', person.cnh_number || '', person.phone || ''].some((value) =>
+      return [person.short_code, person.name, person.document_number || '', person.phone || ''].some((value) =>
         normalizeLookup(value).includes(search)
       );
     });
@@ -231,7 +231,7 @@ export function AccessControlView({ initialLookup = '', onSuccess, onError }: Ac
     }
 
     const person = people.find((item) =>
-      [item.short_code, item.name, item.document_number || '', item.cnh_number || ''].some((value) =>
+      [item.short_code, item.name, item.document_number || ''].some((value) =>
         normalizeLookup(value).includes(lookup) || lookup.includes(normalizeLookup(value))
       )
     );
@@ -265,6 +265,11 @@ export function AccessControlView({ initialLookup = '', onSuccess, onError }: Ac
   const handleEntrySubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const host = selectedHostId ? people.find((person) => person.id === selectedHostId) : null;
+
+    if (!reason.trim()) {
+      onError('Informe o motivo da visita');
+      return;
+    }
 
     try {
       setSavingEntry(true);
@@ -412,24 +417,38 @@ export function AccessControlView({ initialLookup = '', onSuccess, onError }: Ac
             <form onSubmit={handleEntrySubmit} className="space-y-4">
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-gray-700">Tipo de entrada *</label>
-                <select
-                  value={entryKind}
-                  onChange={(event) => {
-                    const nextKind = event.target.value as EntryKind;
-                    setEntryKind(nextKind);
-                    setPersonSearch('');
-                    setSelectedPersonId('');
-                    setSelectedVehicleId('');
-                    setManualPlate('');
-                    setDocumentFile(null);
-                    setTransvelentimMode(false);
-                  }}
-                  className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 focus:border-red-500 focus:ring-4 focus:ring-red-100"
-                >
-                  <option value="Funcionario">Funcionario cadastrado</option>
-                  <option value="Visitante">Visitante</option>
-                  <option value="Terceirizado">Terceirizado</option>
-                </select>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { kind: 'Visitante' as EntryKind, label: 'Visitante', icon: <UserRoundPlus className="w-4 h-4" /> },
+                    { kind: 'Terceirizado' as EntryKind, label: 'Terceiro', icon: <Building2 className="w-4 h-4" /> },
+                    { kind: 'Funcionario' as EntryKind, label: 'Funcionario', icon: <DoorOpen className="w-4 h-4" /> },
+                  ]).map(({ kind, label, icon }) => (
+                    <button
+                      key={kind}
+                      type="button"
+                      onClick={() => {
+                        setEntryKind(kind);
+                        setPersonSearch('');
+                        setSelectedPersonId('');
+                        setSelectedVehicleId('');
+                        setManualPlate('');
+                        setDocumentFile(null);
+                        setTransvelentimMode(false);
+                      }}
+                      className={`flex flex-col items-center justify-center gap-1 rounded-xl border px-2 py-3 text-xs font-semibold transition-all ${
+                        entryKind === kind ? 'bg-red-600 text-white border-transparent shadow-md' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      {icon}
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {entryKind === 'Visitante' && (
+                  <p className="text-xs text-gray-500">
+                    Serve para visitante de carro (informe a placa) ou a pe (deixe a placa em branco).
+                  </p>
+                )}
               </div>
 
               {entryKind === 'Funcionario' ? (
@@ -441,7 +460,7 @@ export function AccessControlView({ initialLookup = '', onSuccess, onError }: Ac
                     setPersonSearch(event.target.value);
                     setSelectedPersonId('');
                   }}
-                  placeholder="Buscar por nome, documento, CNH ou codigo"
+                  placeholder="Buscar por nome, documento ou codigo"
                   className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 focus:border-red-500 focus:ring-4 focus:ring-red-100"
                 />
                 <div className="max-h-56 overflow-y-auto rounded-xl border border-gray-200 bg-white">
@@ -665,7 +684,13 @@ export function AccessControlView({ initialLookup = '', onSuccess, onError }: Ac
                 placeholder={entryKind === 'Funcionario' ? 'Opcional' : 'Opcional se entrar com veiculo'}
               />
 
-              <Input label="Motivo" value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Ex: visita, manutencao, entrega" />
+              <Input
+                label="Motivo da visita"
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                placeholder="Ex: visita, manutencao, entrega"
+                required
+              />
 
               {entryKind !== 'Funcionario' && (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 space-y-3">
@@ -723,6 +748,7 @@ export function AccessControlView({ initialLookup = '', onSuccess, onError }: Ac
                         <p className="text-xs text-gray-500">
                           Resp.: {record.host_person_name || 'Nao informado'}{record.vehicle_plate ? ` | Placa ${record.vehicle_plate}` : ''}
                         </p>
+                        <p className="text-xs text-gray-500">Motivo: {record.reason || 'Nao informado'}</p>
                       </div>
                       <button
                         type="button"

@@ -1,18 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Dispatch, FormEvent, ReactNode, SetStateAction } from 'react';
 import {
-  CalendarDays,
   Building2,
   Camera,
-  CheckCircle2,
   ClipboardCheck,
   Edit2,
-  ExternalLink,
-  FileUp,
   Filter,
   Plus,
   Search,
-  ShieldAlert,
   Timer,
   Save,
   Trash2,
@@ -49,9 +44,10 @@ interface OperationalViewProps {
   onError: (message: string) => void;
 }
 
-type OperationalTab = 'entrada' | 'saida' | 'visitantes' | 'pedestres' | 'motoristas' | 'timeline' | 'relatorios';
-type DriverStatusFilter = 'Todos' | 'Ativos' | 'Inativos' | 'Regulares' | 'Vencendo' | 'Vencidas' | 'Pendentes';
-type DriverSort = 'name' | 'validity' | 'movements';
+type OperationalTab = 'retirada' | 'visitantes' | 'funcionarios' | 'motoristas' | 'timeline';
+type RetiradaView = 'nova' | 'devolucao';
+type DriverStatusFilter = 'Todos' | 'Ativos' | 'Inativos';
+type DriverSort = 'name' | 'movements';
 type ChecklistItemState = { ok: boolean; note: string };
 type ChecklistGroup = Record<string, ChecklistItemState>;
 type TimelineEvent = {
@@ -155,26 +151,6 @@ function createExitFormDefaults() {
   };
 }
 
-function getDaysUntil(dateValue?: string | null) {
-  if (!dateValue) return null;
-  const target = new Date(`${dateValue}T00:00:00`);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-}
-
-function isDriverCnhPending(driver: DriverRecord) {
-  return !driver.cnh_file_url || !driver.cnh_valid_until;
-}
-
-function getDriverCnhStatus(driver: DriverRecord) {
-  const daysLeft = getDaysUntil(driver.cnh_valid_until);
-  if (isDriverCnhPending(driver)) return 'Pendente';
-  if (daysLeft !== null && daysLeft < 0) return 'Vencida';
-  if (daysLeft !== null && daysLeft <= 30) return 'Vencendo';
-  return 'Regular';
-}
-
 function createChecklistState(): ChecklistGroup {
   return CHECKLIST_ITEMS.reduce<ChecklistGroup>((acc, item) => {
     acc[item.key] = { ok: false, note: '' };
@@ -250,7 +226,8 @@ function TabButton({
 }
 
 export function OperationalView({ initialVehicleLookup = '', initialAccessLookup = '', onSuccess, onError }: OperationalViewProps) {
-  const [activeTab, setActiveTab] = useState<OperationalTab>(initialAccessLookup ? 'visitantes' : 'saida');
+  const [activeTab, setActiveTab] = useState<OperationalTab>(initialAccessLookup ? 'visitantes' : 'retirada');
+  const [retiradaView, setRetiradaView] = useState<RetiradaView>('nova');
   const [vehicles, setVehicles] = useState<FleetVehicle[]>([]);
   const [drivers, setDrivers] = useState<DriverRecord[]>([]);
   const [movements, setMovements] = useState<OperationalMovement[]>([]);
@@ -306,9 +283,6 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
   const [exitPhotos, setExitPhotos] = useState<File[]>([]);
   const [exitForm, setExitForm] = useState(() => createExitFormDefaults());
   const [movementSaving, setMovementSaving] = useState(false);
-
-  const [reportStartDate, setReportStartDate] = useState(toDateInputValue(new Date()));
-  const [reportEndDate, setReportEndDate] = useState(toDateInputValue(new Date()));
 
   const loadData = async () => {
     setLoading(true);
@@ -429,7 +403,7 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
     if (!search) return activeDrivers;
 
     return activeDrivers.filter((driver) =>
-      [driver.short_code, driver.name, driver.cnh_number || ''].some((value) => normalizeLookupValue(value).includes(search))
+      [driver.short_code, driver.name].some((value) => normalizeLookupValue(value).includes(search))
     );
   }, [activeDrivers, driverPickerSearch]);
 
@@ -458,18 +432,6 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
     [openMovements]
   );
 
-  const expiringDrivers = useMemo(
-    () =>
-      drivers
-        .map((driver) => ({
-          ...driver,
-          daysLeft: getDaysUntil(driver.cnh_valid_until),
-        }))
-        .filter((driver) => isDriverCnhPending(driver) || (driver.daysLeft !== null && driver.daysLeft <= 30))
-        .sort((a, b) => (a.daysLeft ?? 9999) - (b.daysLeft ?? 9999)),
-    [drivers]
-  );
-
   const driverMovementStats = useMemo(() => {
     const stats = new Map<string, { count: number; lastDate: string | null }>();
     movements.forEach((movement) => {
@@ -488,8 +450,6 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
     () => ({
       total: drivers.length,
       active: drivers.filter((driver) => driver.is_active).length,
-      regular: drivers.filter((driver) => getDriverCnhStatus(driver) === 'Regular').length,
-      attention: drivers.filter((driver) => ['Vencendo', 'Vencida', 'Pendente'].includes(getDriverCnhStatus(driver))).length,
     }),
     [drivers]
   );
@@ -498,44 +458,24 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
     const search = normalizeLookupValue(driverManagementSearch);
     return drivers
       .filter((driver) => {
-        const status = getDriverCnhStatus(driver);
         const matchesSearch =
           !search ||
-          [driver.name, driver.short_code, driver.cnh_number || '', driver.phone || ''].some((value) =>
+          [driver.name, driver.short_code, driver.phone || ''].some((value) =>
             normalizeLookupValue(value).includes(search)
           );
         const matchesStatus =
           driverStatusFilter === 'Todos' ||
           (driverStatusFilter === 'Ativos' && driver.is_active) ||
-          (driverStatusFilter === 'Inativos' && !driver.is_active) ||
-          (driverStatusFilter === 'Regulares' && status === 'Regular') ||
-          (driverStatusFilter === 'Vencendo' && status === 'Vencendo') ||
-          (driverStatusFilter === 'Vencidas' && status === 'Vencida') ||
-          (driverStatusFilter === 'Pendentes' && status === 'Pendente');
+          (driverStatusFilter === 'Inativos' && !driver.is_active);
         return matchesSearch && matchesStatus;
       })
       .sort((a, b) => {
-        if (driverSort === 'validity') {
-          return (a.cnh_valid_until || '9999-12-31').localeCompare(b.cnh_valid_until || '9999-12-31');
-        }
         if (driverSort === 'movements') {
           return (driverMovementStats.get(b.id)?.count || 0) - (driverMovementStats.get(a.id)?.count || 0);
         }
         return a.name.localeCompare(b.name, 'pt-BR');
       });
   }, [driverManagementSearch, driverMovementStats, driverSort, driverStatusFilter, drivers]);
-
-  const filteredMovements = useMemo(() => {
-    const start = reportStartDate ? `${reportStartDate}T00:00:00` : null;
-    const end = reportEndDate ? `${reportEndDate}T23:59:59` : null;
-
-    return movements.filter((movement) => {
-      const entryDate = `${movement.entry_date}T00:00:00`;
-      if (start && entryDate < start) return false;
-      if (end && entryDate > end) return false;
-      return true;
-    });
-  }, [movements, reportStartDate, reportEndDate]);
 
   const timelineEvents = useMemo<TimelineEvent[]>(() => {
     const events = movements.flatMap((movement) => {
@@ -607,13 +547,14 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
           .includes(normalized)
       );
 
-    const preferredMatch = activeTab === 'entrada' ? findMovementMatch() || findVehicleMatch() : findVehicleMatch() || findMovementMatch();
+    const preferredMatch = retiradaView === 'devolucao' ? findMovementMatch() || findVehicleMatch() : findVehicleMatch() || findMovementMatch();
 
     if (preferredMatch && 'vehicle_plate' in preferredMatch) {
       const movementMatch = preferredMatch as OperationalMovement;
       if (movementMatch.status === 'Em aberto') {
         openExitModal(movementMatch);
-        setActiveTab('entrada');
+        setActiveTab('retirada');
+        setRetiradaView('devolucao');
         setMessage(`Movimentação aberta localizada para o código ${formatShortCode(movementMatch.short_code)}`);
       } else {
         setMessage(`Movimentação concluída localizada para o código ${formatShortCode(movementMatch.short_code)}`);
@@ -636,7 +577,8 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
       const openMovement = openMovements.find((movement) => movement.vehicle_id === vehicleMatch.id || movement.vehicle_plate === vehicleMatch.plate);
       if (openMovement) {
         openExitModal(openMovement);
-        setActiveTab('entrada');
+        setActiveTab('retirada');
+        setRetiradaView('devolucao');
         setMessage(`VeÃ­culo fora do pÃ¡tio: abrindo checklist de entrada para ${vehicleMatch.plate}`);
         return;
       }
@@ -645,7 +587,8 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
       return;
     }
 
-    setActiveTab('saida');
+    setActiveTab('retirada');
+    setRetiradaView('nova');
     setSelectedVehicleId(vehicleMatch.id);
     setEntryForm((prev) => ({ ...prev, qr_identifier: vehicleMatch.short_code || lookupValue }));
     setEntrySearch(vehicleMatch.short_code || vehicleMatch.plate);
@@ -868,7 +811,7 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
       await loadData();
     } catch (error) {
       console.error('Erro ao salvar motorista:', error);
-      onError('Erro ao salvar motorista ou anexo da CNH');
+      onError('Erro ao salvar motorista');
     } finally {
       setDriverSaving(false);
     }
@@ -1061,7 +1004,7 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
           Operacional de Pátio e Checklist
         </h2>
         <p className="text-sm sm:text-base text-gray-600">
-          Entrada, saída, motoristas e relatórios em subabas separadas.
+          Retirada/devolução, entrada de pessoas, funcionários e motoristas em subabas separadas.
         </p>
       </div>
 
@@ -1091,25 +1034,31 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
           <p className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-bold text-amber-600">{vehiclesInWork.length}</p>
         </div>
         <div className="glass min-w-[116px] rounded-xl sm:min-w-0 sm:rounded-2xl p-3 sm:p-5 shadow-premium">
-          <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">CNH pendente</p>
+          <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Motoristas ativos</p>
           <p className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-bold text-blue-600">
-            {drivers.filter(isDriverCnhPending).length}
+            {activeDrivers.length}
           </p>
         </div>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-1 xl:grid xl:grid-cols-7 xl:gap-3 xl:overflow-visible">
+      <div className="flex gap-2 overflow-x-auto pb-1 xl:grid xl:grid-cols-5 xl:gap-3 xl:overflow-visible">
         <TabButton
-          active={activeTab === 'entrada'}
-          onClick={() => setActiveTab('entrada')}
+          active={activeTab === 'retirada'}
+          onClick={() => setActiveTab('retirada')}
           icon={<ClipboardCheck className="w-4 h-4" />}
-          label="Checklist de entrada"
+          label="Retirada e devolução"
         />
         <TabButton
-          active={activeTab === 'saida'}
-          onClick={() => setActiveTab('saida')}
-          icon={<Plus className="w-4 h-4" />}
-          label="Checklist de saída"
+          active={activeTab === 'visitantes'}
+          onClick={() => setActiveTab('visitantes')}
+          icon={<UserCheck className="w-4 h-4" />}
+          label="Entrada"
+        />
+        <TabButton
+          active={activeTab === 'funcionarios'}
+          onClick={() => setActiveTab('funcionarios')}
+          icon={<UserRoundPlus className="w-4 h-4" />}
+          label="Funcionários"
         />
         <TabButton
           active={activeTab === 'motoristas'}
@@ -1118,28 +1067,10 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
           label="Motoristas"
         />
         <TabButton
-          active={activeTab === 'visitantes'}
-          onClick={() => setActiveTab('visitantes')}
-          icon={<UserCheck className="w-4 h-4" />}
-          label="Visitantes/Terceiros"
-        />
-        <TabButton
-          active={activeTab === 'pedestres'}
-          onClick={() => setActiveTab('pedestres')}
-          icon={<UserRoundPlus className="w-4 h-4" />}
-          label="Pedestres"
-        />
-        <TabButton
           active={activeTab === 'timeline'}
           onClick={() => setActiveTab('timeline')}
           icon={<Timer className="w-4 h-4" />}
           label="Timeline"
-        />
-        <TabButton
-          active={activeTab === 'relatorios'}
-          onClick={() => setActiveTab('relatorios')}
-          icon={<CalendarDays className="w-4 h-4" />}
-          label="Relatórios"
         />
       </div>
 
@@ -1151,14 +1082,42 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
         />
       )}
 
-      {activeTab === 'pedestres' && (
+      {activeTab === 'funcionarios' && (
         <PedestriansView
           onSuccess={onSuccess}
           onError={onError}
         />
       )}
 
-      {activeTab === 'saida' && (
+      {activeTab === 'retirada' && (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          <button
+            type="button"
+            onClick={() => setRetiradaView('nova')}
+            className={`flex min-w-max items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${
+              retiradaView === 'nova' ? 'bg-red-600 text-white shadow-md' : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <Plus className="w-4 h-4" />
+            Nova retirada
+          </button>
+          <button
+            type="button"
+            onClick={() => setRetiradaView('devolucao')}
+            className={`flex min-w-max items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${
+              retiradaView === 'devolucao' ? 'bg-red-600 text-white shadow-md' : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <ClipboardCheck className="w-4 h-4" />
+            Registrar devolução
+            {openMovements.length > 0 && (
+              <span className="ml-1 rounded-full bg-white/20 px-2 py-0.5 text-xs">{openMovements.length}</span>
+            )}
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'retirada' && retiradaView === 'nova' && (
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           <section className="xl:col-span-2 glass rounded-2xl p-4 sm:p-6 shadow-premium">
             <div className="mb-5 flex items-center gap-2">
@@ -1356,7 +1315,7 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
                     <input
                       value={driverPickerSearch}
                       onChange={(event) => setDriverPickerSearch(event.target.value)}
-                      placeholder="Digite nome, código ou CNH"
+                      placeholder="Digite nome ou código"
                       disabled={transvelentimMode}
                       className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm focus:border-red-500 focus:ring-4 focus:ring-red-100"
                     />
@@ -1371,7 +1330,6 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
                         .map((driver) => (
                           <option key={driver.id} value={driver.id}>
                             {formatShortCode(driver.short_code)} - {driver.name}
-                            {driver.cnh_number ? ` - CNH ${driver.cnh_number}` : ' - número não informado'}
                           </option>
                         ))}
                     </select>
@@ -1380,13 +1338,7 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
                     </p>
                     {transvelentimMode ? (
                       <p className="text-xs text-cyan-700">Motorista informado no painel da Transvalentim acima.</p>
-                    ) : selectedDriver ? (
-                      <p className="text-xs text-gray-500">
-                        {selectedDriver.cnh_number ? `CNH ${selectedDriver.cnh_number}` : 'Número da CNH não informado'}
-                        {' | '}
-                        {selectedDriver.cnh_valid_until ? `válida até ${formatDateBR(selectedDriver.cnh_valid_until)}` : 'sem validade informada'}
-                      </p>
-                    ) : (
+                    ) : !selectedDriver && (
                       <p className="text-xs text-amber-700">Nenhum motorista selecionado. Você pode escolher ou trocar antes de salvar.</p>
                     )}
                   </div>
@@ -1555,11 +1507,11 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
         </div>
       )}
 
-      {activeTab === 'entrada' && (
+      {activeTab === 'retirada' && retiradaView === 'devolucao' && (
         <section className="glass rounded-2xl p-6 shadow-premium">
           <div className="mb-5 flex items-center gap-2">
             <ClipboardCheck className="w-5 h-5 text-red-600" />
-            <h3 className="text-lg font-bold text-gray-900">Checklist de entrada</h3>
+            <h3 className="text-lg font-bold text-gray-900">Registrar devolução</h3>
           </div>
 
           <div className="mb-5 flex flex-col gap-3 lg:flex-row">
@@ -1642,12 +1594,10 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
 
       {activeTab === 'motoristas' && (
         <div className="space-y-6">
-          <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <section className="grid grid-cols-2 gap-3">
             {[
               { label: 'Cadastrados', value: driverSummary.total, icon: Users, color: 'text-blue-700', bg: 'bg-blue-50 border-blue-200' },
               { label: 'Ativos', value: driverSummary.active, icon: UserCheck, color: 'text-green-700', bg: 'bg-green-50 border-green-200' },
-              { label: 'CNH regular', value: driverSummary.regular, icon: CheckCircle2, color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200' },
-              { label: 'Precisam atenção', value: driverSummary.attention, icon: ShieldAlert, color: 'text-red-700', bg: 'bg-red-50 border-red-200' },
             ].map(({ label, value, icon: Icon, color, bg }) => (
               <div key={label} className={`rounded-2xl border p-4 shadow-sm ${bg}`}>
                 <div className="flex items-center justify-between gap-2">
@@ -1665,7 +1615,7 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
               <Users className="w-5 h-5 text-red-600" />
               <div>
                 <h3 className="text-lg font-bold text-gray-900">{editingDriverId ? 'Editar motorista' : 'Novo motorista'}</h3>
-                <p className="text-xs text-gray-500">Dados, validade e documento da CNH.</p>
+                <p className="text-xs text-gray-500">Nome e contato do motorista.</p>
               </div>
             </div>
 
@@ -1677,47 +1627,6 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
                 placeholder="Nome completo"
                 required
               />
-              <Input
-                label="Número da CNH"
-                value={driverForm.cnh_number || ''}
-                onChange={(event) => setDriverForm((prev) => ({ ...prev, cnh_number: event.target.value }))}
-                placeholder="Opcional"
-              />
-              <Input
-                label="Validade da CNH"
-                type="date"
-                value={driverForm.cnh_valid_until || ''}
-                onChange={(event) => setDriverForm((prev) => ({ ...prev, cnh_valid_until: event.target.value }))}
-                required={false}
-              />
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-gray-700">Anexo da CNH</label>
-                <label className="flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-gray-300 bg-white px-4 py-4 text-sm text-gray-700 hover:border-red-400 hover:bg-red-50">
-                  <FileUp className="h-5 w-5 flex-shrink-0 text-red-600" />
-                  <span className="min-w-0 flex-1 truncate">
-                    {driverCnhFile?.name ||
-                      (editingDriverId
-                        ? drivers.find((driver) => driver.id === editingDriverId)?.cnh_file_name
-                        : '') ||
-                      'Selecionar imagem ou PDF'}
-                  </span>
-                  <input
-                    type="file"
-                    accept="image/*,.pdf,application/pdf"
-                    className="hidden"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0] || null;
-                      if (file && file.size > 10 * 1024 * 1024) {
-                        onError('O anexo da CNH deve ter no máximo 10 MB');
-                        event.target.value = '';
-                        return;
-                      }
-                      setDriverCnhFile(file);
-                    }}
-                  />
-                </label>
-                <p className="text-xs text-gray-500">Formatos aceitos: imagem ou PDF, até 10 MB.</p>
-              </div>
               <Input
                 label="Telefone"
                 value={driverForm.phone || ''}
@@ -1774,7 +1683,7 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
             </form>
 
             <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-              Os nomes importados do histórico entram como motoristas pendentes. Você pode excluir, incluir novos e completar a CNH depois.
+              Os nomes importados do histórico entram como motoristas pendentes. Você pode excluir ou incluir novos depois.
             </div>
 
           </section>
@@ -1809,7 +1718,7 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
                   <input
                     value={driverManagementSearch}
                     onChange={(event) => setDriverManagementSearch(event.target.value)}
-                    placeholder="Buscar nome, código, CNH ou telefone"
+                    placeholder="Buscar nome, código ou telefone"
                     className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-10 pr-4 text-sm focus:border-red-500 focus:outline-none focus:ring-4 focus:ring-red-100"
                   />
                 </label>
@@ -1820,7 +1729,7 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
                     onChange={(event) => setDriverStatusFilter(event.target.value as DriverStatusFilter)}
                     className="min-w-32 bg-transparent py-3 text-sm font-semibold text-gray-700 outline-none"
                   >
-                    {(['Todos', 'Ativos', 'Inativos', 'Regulares', 'Vencendo', 'Vencidas', 'Pendentes'] as DriverStatusFilter[]).map((status) => (
+                    {(['Todos', 'Ativos', 'Inativos'] as DriverStatusFilter[]).map((status) => (
                       <option key={status}>{status}</option>
                     ))}
                   </select>
@@ -1831,7 +1740,6 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
                   className="rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm font-semibold text-gray-700 outline-none"
                 >
                   <option value="name">Ordenar por nome</option>
-                  <option value="validity">Ordenar por validade</option>
                   <option value="movements">Mais movimentações</option>
                 </select>
               </div>
@@ -1844,8 +1752,6 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
                 </div>
               ) : (
                 managedDrivers.map((driver) => {
-                  const daysLeft = getDaysUntil(driver.cnh_valid_until);
-                  const cnhStatus = getDriverCnhStatus(driver);
                   const movementStats = driverMovementStats.get(driver.id);
                   return (
                     <div key={driver.id} className={`rounded-2xl border bg-gray-50 p-4 ${!driver.is_active ? 'border-gray-300 opacity-75' : 'border-gray-200'}`}>
@@ -1854,29 +1760,13 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="font-bold text-gray-900">{driver.name}</p>
                             {!driver.is_active && <Badge tone="neutral">Inativo</Badge>}
-                            <Badge tone={cnhStatus === 'Pendente' || cnhStatus === 'Vencendo' ? 'warning' : cnhStatus === 'Vencida' ? 'danger' : 'success'}>
-                              {cnhStatus}
-                            </Badge>
                           </div>
                           <div className="mt-2 grid grid-cols-1 gap-1 text-sm text-gray-600 sm:grid-cols-2">
-                            <p>{driver.cnh_number ? `CNH ${driver.cnh_number}` : 'Número da CNH não informado'}</p>
-                            <p>{driver.cnh_valid_until ? `Validade: ${formatDateBR(driver.cnh_valid_until)}` : 'Sem validade informada'}</p>
                             <p>Código: {formatShortCode(driver.short_code)}</p>
                             <p>{movementStats?.count || 0} movimentação(ões)</p>
                             <p>{driver.phone?.trim() ? `Telefone: ${driver.phone}` : 'Telefone não informado'}</p>
                             <p>{movementStats?.lastDate ? `Última atividade: ${formatDateBR(movementStats.lastDate)}` : 'Sem atividade registrada'}</p>
                           </div>
-                          {driver.cnh_file_url && (
-                            <a
-                              href={driver.cnh_file_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-blue-700 hover:text-blue-900"
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                              Abrir anexo da CNH
-                            </a>
-                          )}
                         </div>
 
                         <div className="flex shrink-0 gap-2 sm:flex-col sm:items-stretch">
@@ -1899,11 +1789,6 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
                           </button>
                         </div>
                       </div>
-                      {cnhStatus === 'Vencendo' && daysLeft !== null && (
-                        <p className="mt-3 rounded-xl bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-800">
-                          A CNH vence em {daysLeft} dia(s).
-                        </p>
-                      )}
                     </div>
                   );
                 })
@@ -1964,125 +1849,6 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
         </section>
       )}
 
-      {activeTab === 'relatorios' && (
-        <section className="glass rounded-2xl p-6 shadow-premium">
-          <div className="mb-5 flex items-center gap-2">
-            <CalendarDays className="w-5 h-5 text-red-600" />
-            <h3 className="text-lg font-bold text-gray-900">Relatórios</h3>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
-            <Input
-              label="Data inicial"
-              type="date"
-              value={reportStartDate}
-              onChange={(event) => setReportStartDate(event.target.value)}
-            />
-            <Input
-              label="Data final"
-              type="date"
-              value={reportEndDate}
-              onChange={(event) => setReportEndDate(event.target.value)}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="rounded-2xl bg-red-50 border border-red-200 p-4">
-              <p className="text-sm font-semibold text-red-700">Em aberto</p>
-              <p className="mt-2 text-3xl font-bold text-red-600">{openMovements.length}</p>
-            </div>
-            <div className="rounded-2xl bg-green-50 border border-green-200 p-4">
-              <p className="text-sm font-semibold text-green-700">No pátio</p>
-              <p className="mt-2 text-3xl font-bold text-green-600">{vehiclesInPatio.length}</p>
-            </div>
-            <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4">
-              <p className="text-sm font-semibold text-amber-700">Em obra</p>
-              <p className="mt-2 text-3xl font-bold text-amber-600">{vehiclesInWork.length}</p>
-            </div>
-            <div className="rounded-2xl bg-blue-50 border border-blue-200 p-4">
-              <p className="text-sm font-semibold text-blue-700">Motoristas</p>
-              <p className="mt-2 text-3xl font-bold text-blue-600">{drivers.length}</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-gray-900">Movimentações no período</h4>
-                <Badge tone="info">{filteredMovements.length}</Badge>
-              </div>
-              <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                {filteredMovements.length === 0 ? (
-                  <p className="text-sm text-gray-500">Nenhuma movimentação no período.</p>
-                ) : (
-                  filteredMovements.map((movement) => (
-                    <div key={movement.id} className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-bold text-gray-900">{movement.vehicle_plate}</p>
-                          <p className="text-sm text-gray-600">{movement.driver_name}</p>
-                          <p className="text-xs text-gray-500">Código: {formatShortCode(movement.short_code)}</p>
-                          <p className="text-xs text-gray-500">
-                            Saída {formatDateBR(movement.entry_date)} {movement.entry_time}
-                            {movement.exit_date ? ` | Entrada ${formatDateBR(movement.exit_date)} ${movement.exit_time}` : ''}
-                          </p>
-                        </div>
-                        <Badge tone={movement.status === 'Em aberto' ? 'danger' : 'success'}>{movement.status}</Badge>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-gray-900">CNH pendente ou vencendo</h4>
-                <Badge tone="warning">{expiringDrivers.length}</Badge>
-              </div>
-              <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                {expiringDrivers.length === 0 ? (
-                  <p className="text-sm text-gray-500">Sem alertas de CNH.</p>
-                ) : (
-                  expiringDrivers.map((driver) => {
-                    const daysLeft = getDaysUntil(driver.cnh_valid_until);
-                    return (
-                      <div key={driver.id} className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="font-bold text-gray-900">{driver.name}</p>
-                            <p className="text-sm text-gray-600">
-                              {driver.cnh_number ? `CNH ${driver.cnh_number}` : 'Número da CNH não informado'}
-                            </p>
-                            <p className="text-xs text-gray-500">Código: {formatShortCode(driver.short_code)}</p>
-                            <p className="text-xs text-gray-500">
-                              {driver.cnh_valid_until ? `Validade: ${formatDateBR(driver.cnh_valid_until)}` : 'Sem validade informada'}
-                            </p>
-                          </div>
-                          <Badge tone={isDriverCnhPending(driver) ? 'warning' : daysLeft !== null && daysLeft < 0 ? 'danger' : 'warning'}>
-                            {isDriverCnhPending(driver) ? 'Pendente' : daysLeft !== null && daysLeft < 0 ? 'Vencida' : `${daysLeft}d`}
-                          </Badge>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6 rounded-2xl border border-gray-200 bg-gray-50 p-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-              <ShieldAlert className="w-4 h-4 text-red-600" />
-              Status do relatório
-            </div>
-            <p className="mt-2 text-sm text-gray-600">
-              O painel agrupa entradas, saídas, veículos em pátio e motoristas com CNH pendente ou vencendo.
-            </p>
-          </div>
-        </section>
-      )}
-
       <Modal
         isOpen={!!movementToClose}
         onClose={() => setMovementToClose(null)}
@@ -2110,7 +1876,6 @@ export function OperationalView({ initialVehicleLookup = '', initialAccessLookup
                   .map((driver) => (
                     <option key={driver.id} value={driver.id}>
                       {formatShortCode(driver.short_code)} - {driver.name}
-                      {driver.cnh_number ? ` - CNH ${driver.cnh_number}` : ' - número não informado'}
                     </option>
                   ))}
               </select>

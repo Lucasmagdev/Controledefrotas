@@ -112,8 +112,8 @@ export function PedestriansView({ onSuccess, onError }: PedestriansViewProps) {
       });
       setPeople(data);
     } catch (error) {
-      console.error('Erro ao carregar pedestres:', error);
-      onErrorRef.current('Não foi possível carregar o cadastro de pedestres.');
+      console.error('Erro ao carregar pessoas:', error);
+      onErrorRef.current('Não foi possível carregar o cadastro de pessoas.');
     } finally {
       setLoading(false);
     }
@@ -153,12 +153,12 @@ export function PedestriansView({ onSuccess, onError }: PedestriansViewProps) {
         onSuccess('Pessoa atualizada com sucesso.');
       } else {
         await accessControlService.createPerson({ ...form, is_driver: false });
-        onSuccess('Pedestre cadastrado com sucesso.');
+        onSuccess('Pessoa cadastrada com sucesso.');
       }
       resetForm();
       await loadPeople();
     } catch (error) {
-      console.error('Erro ao salvar pedestre:', error);
+      console.error('Erro ao salvar pessoa:', error);
       onError(getPersonErrorMessage(error, editingId ? 'atualizar' : 'cadastrar'));
     } finally {
       setSaving(false);
@@ -231,7 +231,7 @@ export function PedestriansView({ onSuccess, onError }: PedestriansViewProps) {
             <UserRoundPlus className="h-5 w-5 text-red-600" />
             <div>
               <h3 className="text-lg font-bold text-gray-900">
-                {editingId ? 'Editar pessoa' : 'Novo pedestre'}
+                {editingId ? 'Editar pessoa' : 'Nova pessoa'}
               </h3>
               <p className="text-xs text-gray-500">Cadastro utilizado pelo controle de acesso da portaria.</p>
             </div>
@@ -303,7 +303,7 @@ export function PedestriansView({ onSuccess, onError }: PedestriansViewProps) {
                 disabled={saving}
                 className="flex-1 rounded-xl bg-gray-900 px-4 py-3 font-semibold text-white hover:bg-black disabled:opacity-60"
               >
-                {saving ? 'Salvando...' : editingId ? 'Salvar alterações' : 'Adicionar pedestre'}
+                {saving ? 'Salvando...' : editingId ? 'Salvar alterações' : 'Adicionar pessoa'}
               </button>
               {editingId && (
                 <button
@@ -323,8 +323,8 @@ export function PedestriansView({ onSuccess, onError }: PedestriansViewProps) {
           <div className="mb-5 space-y-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h3 className="text-lg font-bold text-gray-900">Controle de pedestres</h3>
-                <p className="text-xs text-gray-500">Cadastros disponíveis para a portaria.</p>
+                <h3 className="text-lg font-bold text-gray-900">Cadastro de pessoas</h3>
+                <p className="text-xs text-gray-500">Funcionários, terceirizados e visitantes disponíveis para a portaria.</p>
               </div>
               {(search || personTypeFilter !== 'Todos' || statusFilter !== 'Todos') && (
                 <button
@@ -380,7 +380,7 @@ export function PedestriansView({ onSuccess, onError }: PedestriansViewProps) {
           <div className="max-h-[860px] space-y-3 overflow-y-auto pr-1">
             {loading ? (
               <div className="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">
-                Carregando pedestres...
+                Carregando pessoas...
               </div>
             ) : people.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-gray-500">

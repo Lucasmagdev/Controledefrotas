@@ -1,9 +1,18 @@
 import { useState } from 'react';
 import { Eye, EyeOff, LogIn, Lock, User } from 'lucide-react';
 
+export type UserRole = 'admin' | 'porteiro';
+
 interface LoginProps {
-  onLogin: () => void;
+  onLogin: (role: UserRole) => void;
 }
+
+const USERS: { username: string; password: string; role: UserRole }[] = [
+  { username: 'admingontijo', password: 'admin123', role: 'admin' },
+  { username: 'gabriela', password: 'q9uJz!y$#!dHUH', role: 'admin' },
+  { username: 'Marlon.nocci@gontijoengenharia.com.br', password: 'Marlon@2026', role: 'admin' },
+  { username: 'lorena', password: 'lorena', role: 'porteiro' },
+];
 
 export function Login({ onLogin }: LoginProps) {
   const [username, setUsername] = useState('');
@@ -19,15 +28,12 @@ export function Login({ onLogin }: LoginProps) {
 
     // Simular delay de autenticação
     setTimeout(() => {
-      const users = [
-        { username: 'admingontijo', password: 'admin123' },
-        { username: 'gabriela', password: 'q9uJz!y$#!dHUH' },
-        { username: 'Marlon.nocci@gontijoengenharia.com.br', password: 'Marlon@2026' },
-      ];
-      const match = users.find((u) => u.username === username && u.password === password);
+      const match = USERS.find((u) => u.username === username && u.password === password);
       if (match) {
         localStorage.setItem('isAuthenticated', 'true');
-        onLogin();
+        localStorage.setItem('userRole', match.role);
+        localStorage.setItem('username', match.username);
+        onLogin(match.role);
       } else {
         setError('Usuário ou senha incorretos');
         setIsLoading(false);

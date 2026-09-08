@@ -1,15 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import QRCode from 'qrcode';
-import { Car, Search, Wrench, CheckCircle2, PauseCircle, Plus, Edit2, Trash2, ListFilter, QrCode, Download, Printer, UserRound } from 'lucide-react';
+import { Car, Search, Wrench, CheckCircle2, PauseCircle, Plus, Edit2, Trash2, ListFilter, QrCode, Download, Printer, UserRound, ClipboardCheck } from 'lucide-react';
 import { Input } from './Input';
 import { Modal } from './Modal';
 import { Textarea } from './Textarea';
 import { vehicleCatalogService } from '../services/vehicleCatalogService';
 import { operationalService } from '../services/operationalService';
 import { accessControlService } from '../services/accessControlService';
+import { inspectionService } from '../services/inspectionService';
+import type { UserRole } from './Login';
 import type { DriverRecord, FleetVehicle, FleetVehicleInput, PersonalVehicle, VehicleStatus } from '../types/database';
 
 interface VehiclesViewProps {
+  userRole: UserRole;
   onSuccess: (message: string) => void;
   onError: (message: string) => void;
 }
@@ -44,8 +47,11 @@ function getPersonalVehicleQrUrl(vehicle: PersonalVehicle) {
   return url.toString();
 }
 
-export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
+export function VehiclesView({ userRole, onSuccess, onError }: VehiclesViewProps) {
   const [activeVehiclesTab, setActiveVehiclesTab] = useState<VehiclesTab>('fleet');
+  const [inspectionVehicle, setInspectionVehicle] = useState<FleetVehicle | null>(null);
+  const [inspectionNotes, setInspectionNotes] = useState('');
+  const [inspectionSaving, setInspectionSaving] = useState(false);
   const [vehicles, setVehicles] = useState<FleetVehicle[]>([]);
   const [drivers, setDrivers] = useState<DriverRecord[]>([]);
   const [personalVehicles, setPersonalVehicles] = useState<PersonalVehicle[]>([]);
@@ -437,6 +443,33 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
     });
   };
 
+  const openInspectionModal = (vehicle: FleetVehicle) => {
+    setInspectionVehicle(vehicle);
+    setInspectionNotes('');
+  };
+
+  const handleRequestInspection = async () => {
+    if (!inspectionVehicle) return;
+
+    try {
+      setInspectionSaving(true);
+      await inspectionService.createRequest({
+        vehicle_id: inspectionVehicle.id,
+        vehicle_plate: inspectionVehicle.plate,
+        vehicle_name: inspectionVehicle.name,
+        requested_by: localStorage.getItem('username') || 'Admin',
+        notes: inspectionNotes,
+      });
+      onSuccess('Inspeção solicitada. O porteiro foi notificado.');
+      setInspectionVehicle(null);
+    } catch (error) {
+      console.error('Erro ao solicitar inspeção:', error);
+      onError('Erro ao solicitar inspeção');
+    } finally {
+      setInspectionSaving(false);
+    }
+  };
+
   const statusStyle = (status: VehicleStatus) => {
     if (status === 'Ativo') {
       return 'bg-green-100 text-green-700';
@@ -668,6 +701,16 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
                     </div>
 
                     <div className="flex items-center gap-2">
+                      {userRole === 'admin' && (
+                        <button
+                          type="button"
+                          onClick={() => openInspectionModal(vehicle)}
+                          className="p-2.5 rounded-xl border border-amber-200 text-amber-700 hover:bg-amber-50"
+                          title="Solicitar inspeção"
+                        >
+                          <ClipboardCheck className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => openQrModal(vehicle)}
@@ -862,6 +905,52 @@ export function VehiclesView({ onSuccess, onError }: VehiclesViewProps) {
           </section>
         </div>
       )}
+
+      <Modal
+        isOpen={!!inspectionVehicle}
+        onClose={() => setInspectionVehicle(null)}
+        title="Solicitar inspeção"
+        size="md"
+      >
+        {inspectionVehicle && (
+          <div className="space-y-5">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <p className="text-sm font-semibold text-amber-900">{inspectionVehicle.plate}</p>
+              <p className="text-sm text-amber-800">{inspectionVehicle.name}</p>
+              <p className="mt-2 text-xs text-amber-700">
+                O porteiro vai receber uma notificação para fazer a inspeção deste veículo.
+              </p>
+            </div>
+
+            <Textarea
+              label="Observações (opcional)"
+              value={inspectionNotes}
+              onChange={(event) => setInspectionNotes(event.target.value)}
+              placeholder="Ex: verificar pneus antes da viagem"
+              rows={3}
+            />
+
+            <div className="flex flex-col-reverse gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => setInspectionVehicle(null)}
+                className="flex-1 rounded-xl border border-gray-300 px-4 py-3 font-semibold text-gray-700 hover:bg-gray-100"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleRequestInspection}
+                disabled={inspectionSaving}
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3 font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+              >
+                <ClipboardCheck className="w-4 h-4" />
+                {inspectionSaving ? 'Enviando...' : 'Solicitar inspeção'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <Modal
         isOpen={!!qrVehicle}
