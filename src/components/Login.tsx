@@ -12,6 +12,7 @@ const USERS: { username: string; password: string; role: UserRole }[] = [
   { username: 'gabriela', password: 'q9uJz!y$#!dHUH', role: 'admin' },
   { username: 'Marlon.nocci@gontijoengenharia.com.br', password: 'Marlon@2026', role: 'admin' },
   { username: 'bruna.garcia@gontijoengenharia.com.br', password: '12345678', role: 'admin' },
+  { username: 'controle.acesso@gontijoengenharia.com.br', password: 'Acesso@2026', role: 'admin' },
   { username: 'lorena', password: 'lorena', role: 'porteiro' },
 ];
 
